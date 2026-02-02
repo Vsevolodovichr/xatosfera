@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,6 +24,11 @@ import {
   ExternalLink,
   Edit,
   Trash2,
+  X,
+  Home,
+  LayoutGrid,
+  Ruler,
+  DoorOpen,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,16 +53,26 @@ interface Property {
   photos: string[];
   external_link: string;
   created_at: string;
+  area: number | null;
+  floor: number | null;
+  rooms: number | null;
+  heating: string | null;
+  condition: string | null;
 }
 
 export const PropertiesPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDealType, setFilterDealType] = useState('all');
+  const [filterPropertyCategory, setFilterPropertyCategory] = useState('all');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -95,6 +110,19 @@ export const PropertiesPage = () => {
     }
   };
 
+  const clearFilters = () => {
+    setSearch('');
+    setFilterType('all');
+    setFilterStatus('all');
+    setFilterDealType('all');
+    setFilterPropertyCategory('all');
+    setPriceMin('');
+    setPriceMax('');
+  };
+
+  const hasActiveFilters = search || filterType !== 'all' || filterStatus !== 'all' || 
+    filterDealType !== 'all' || filterPropertyCategory !== 'all' || priceMin || priceMax;
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; className: string }> = {
       available: { label: t('status.available'), className: 'status-available' },
@@ -119,18 +147,54 @@ export const PropertiesPage = () => {
     );
   };
 
-  const filteredProperties = properties.filter((property) => {
-    const matchesSearch =
-      property.address.toLowerCase().includes(search.toLowerCase()) ||
-      property.owner_name.toLowerCase().includes(search.toLowerCase());
-    const matchesType = filterType === 'all' || property.deal_type === filterType;
-    const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const filteredProperties = useMemo(() => {
+    return properties.filter((property) => {
+      // Text search - address, owner name, description
+      const searchLower = search.toLowerCase();
+      const matchesSearch = !search ||
+        property.address.toLowerCase().includes(searchLower) ||
+        property.owner_name.toLowerCase().includes(searchLower) ||
+        (property.description && property.description.toLowerCase().includes(searchLower));
+
+      // Property type filter
+      const matchesType = filterType === 'all' || property.property_type === filterType;
+
+      // Status filter
+      const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
+
+      // Deal type filter
+      const matchesDealType = filterDealType === 'all' || property.deal_type === filterDealType;
+
+      // Commercial/residential filter
+      const isCommercial = property.property_type === 'commercial' || property.property_type === 'office';
+      const matchesCategory = filterPropertyCategory === 'all' ||
+        (filterPropertyCategory === 'commercial' && isCommercial) ||
+        (filterPropertyCategory === 'residential' && !isCommercial);
+
+      // Price range filter
+      const matchesPriceMin = !priceMin || property.price >= parseFloat(priceMin);
+      const matchesPriceMax = !priceMax || property.price <= parseFloat(priceMax);
+
+      return matchesSearch && matchesType && matchesStatus && matchesDealType && 
+        matchesCategory && matchesPriceMin && matchesPriceMax;
+    });
+  }, [properties, search, filterType, filterStatus, filterDealType, filterPropertyCategory, priceMin, priceMax]);
 
   const formatPrice = (price: number, dealType: string) => {
     const formatted = new Intl.NumberFormat('uk-UA').format(price);
     return dealType === 'rent' ? `₴${formatted}/міс` : `₴${formatted}`;
+  };
+
+  const getHeatingLabel = (heating: string | null) => {
+    if (!heating) return null;
+    const labels: Record<string, string> = {
+      central: language === 'uk' ? 'Центральне' : 'Central',
+      individual: language === 'uk' ? 'Індивідуальне' : 'Individual',
+      gas: language === 'uk' ? 'Газове' : 'Gas',
+      electric: language === 'uk' ? 'Електричне' : 'Electric',
+      none: language === 'uk' ? 'Відсутнє' : 'None',
+    };
+    return labels[heating] || heating;
   };
 
   return (
@@ -141,7 +205,7 @@ export const PropertiesPage = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('properties.title')}</h1>
             <p className="text-muted-foreground mt-1">
-              {filteredProperties.length} {filteredProperties.length === 1 ? 'об\'єкт' : 'об\'єктів'}
+              {filteredProperties.length} {language === 'uk' ? 'об\'єктів' : 'properties'}
             </p>
           </div>
           <Button asChild className="gradient-accent text-accent-foreground shadow-accent hover:opacity-90">
@@ -155,38 +219,109 @@ export const PropertiesPage = () => {
         {/* Filters */}
         <Card className="shadow-card border-0">
           <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('properties.search')}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="space-y-4">
+              {/* Main search and quick filters */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={language === 'uk' ? 'Пошук за адресою, власником...' : 'Search by address, owner...'}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={filterDealType} onValueChange={setFilterDealType}>
+                  <SelectTrigger className="w-full md:w-[150px]">
+                    <SelectValue placeholder={t('properties.dealType')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('properties.all')}</SelectItem>
+                    <SelectItem value="sale">{t('deal.sale')}</SelectItem>
+                    <SelectItem value="rent">{t('deal.rent')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full md:w-[150px]">
+                    <SelectValue placeholder={t('properties.status')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('properties.all')}</SelectItem>
+                    <SelectItem value="available">{t('status.available')}</SelectItem>
+                    <SelectItem value="sold">{t('status.sold')}</SelectItem>
+                    <SelectItem value="rented">{t('status.rented')}</SelectItem>
+                    <SelectItem value="not_sold">{t('status.notSold')}</SelectItem>
+                    <SelectItem value="not_rented">{t('status.notRented')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className="gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  {language === 'uk' ? 'Більше' : 'More'}
+                </Button>
               </div>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder={t('properties.dealType')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('properties.all')}</SelectItem>
-                  <SelectItem value="sale">{t('deal.sale')}</SelectItem>
-                  <SelectItem value="rent">{t('deal.rent')}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder={t('properties.status')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('properties.all')}</SelectItem>
-                  <SelectItem value="available">{t('status.available')}</SelectItem>
-                  <SelectItem value="sold">{t('status.sold')}</SelectItem>
-                  <SelectItem value="rented">{t('status.rented')}</SelectItem>
-                </SelectContent>
-              </Select>
+
+              {/* Advanced filters */}
+              {showAdvancedFilters && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t">
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('properties.type')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('properties.all')}</SelectItem>
+                      <SelectItem value="apartment">{t('property.apartment')}</SelectItem>
+                      <SelectItem value="house">{t('property.house')}</SelectItem>
+                      <SelectItem value="commercial">{t('property.commercial')}</SelectItem>
+                      <SelectItem value="land">{t('property.land')}</SelectItem>
+                      <SelectItem value="office">{t('property.office')}</SelectItem>
+                      <SelectItem value="other">{t('property.other')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterPropertyCategory} onValueChange={setFilterPropertyCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'uk' ? 'Категорія' : 'Category'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('properties.all')}</SelectItem>
+                      <SelectItem value="residential">
+                        {language === 'uk' ? 'Житлова' : 'Residential'}
+                      </SelectItem>
+                      <SelectItem value="commercial">
+                        {language === 'uk' ? 'Комерційна' : 'Commercial'}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    placeholder={language === 'uk' ? 'Ціна від' : 'Price from'}
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    placeholder={language === 'uk' ? 'Ціна до' : 'Price to'}
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Active filters indicator */}
+              {hasActiveFilters && (
+                <div className="flex items-center gap-2 pt-2">
+                  <span className="text-sm text-muted-foreground">
+                    {language === 'uk' ? 'Фільтри активні' : 'Filters active'}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 gap-1">
+                    <X className="h-3 w-3" />
+                    {language === 'uk' ? 'Скинути' : 'Clear'}
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -266,6 +401,30 @@ export const PropertiesPage = () => {
                     </DropdownMenu>
                   </div>
 
+                  {/* Property specs */}
+                  {(property.area || property.rooms || property.floor) && (
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {property.area && (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-muted rounded-full">
+                          <Ruler className="h-3 w-3" />
+                          {property.area} м²
+                        </span>
+                      )}
+                      {property.rooms && (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-muted rounded-full">
+                          <DoorOpen className="h-3 w-3" />
+                          {property.rooms} {language === 'uk' ? 'кім' : 'rooms'}
+                        </span>
+                      )}
+                      {property.floor && (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-muted rounded-full">
+                          <LayoutGrid className="h-3 w-3" />
+                          {property.floor} {language === 'uk' ? 'пов' : 'fl'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="h-4 w-4 flex-shrink-0" />
@@ -283,7 +442,7 @@ export const PropertiesPage = () => {
                         className="flex items-center gap-2 text-primary hover:underline"
                       >
                         <ExternalLink className="h-4 w-4" />
-                        <span>Переглянути оголошення</span>
+                        <span>{language === 'uk' ? 'Переглянути оголошення' : 'View listing'}</span>
                       </a>
                     )}
                   </div>
@@ -299,14 +458,22 @@ export const PropertiesPage = () => {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">{t('common.noData')}</h3>
               <p className="text-muted-foreground text-center mb-6">
-                Додайте перший об'єкт нерухомості для початку роботи
+                {hasActiveFilters 
+                  ? (language === 'uk' ? 'Не знайдено об\'єктів за заданими критеріями' : 'No properties found matching your criteria')
+                  : (language === 'uk' ? 'Додайте перший об\'єкт нерухомості для початку роботи' : 'Add your first property to get started')}
               </p>
-              <Button asChild className="gradient-accent text-accent-foreground shadow-accent">
-                <Link to="/properties/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('properties.add')}
-                </Link>
-              </Button>
+              {hasActiveFilters ? (
+                <Button onClick={clearFilters} variant="outline">
+                  {language === 'uk' ? 'Скинути фільтри' : 'Clear filters'}
+                </Button>
+              ) : (
+                <Button asChild className="gradient-accent text-accent-foreground shadow-accent">
+                  <Link to="/properties/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('properties.add')}
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

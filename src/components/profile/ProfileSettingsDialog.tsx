@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, Phone, Moon, Sun, Camera } from 'lucide-react';
+import { User, Phone, Moon, Sun, Camera, Loader2 } from 'lucide-react';
 
 interface ProfileSettingsDialogProps {
   open: boolean;
@@ -24,12 +24,13 @@ interface ProfileSettingsDialogProps {
 
 export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDialogProps) => {
   const { t } = useLanguage();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -39,12 +40,38 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
     }
   }, [profile]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // For now, just create a local URL. In production, upload to storage.
-      const url = URL.createObjectURL(file);
-      setAvatarUrl(url);
+    if (!file || !user) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      // Delete old avatar if exists
+      if (avatarUrl && avatarUrl.includes('avatars')) {
+        const oldPath = avatarUrl.split('/').slice(-2).join('/');
+        await supabase.storage.from('avatars').remove([oldPath]);
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      setAvatarUrl(urlData.publicUrl);
+      toast.success('Фото завантажено');
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Помилка завантаження фото');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -58,11 +85,15 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
         .update({
           full_name: fullName,
           phone: phone,
-          avatar_url: avatarUrl.startsWith('blob:') ? null : avatarUrl,
+          avatar_url: avatarUrl || null,
         })
         .eq('id', user.id);
 
       if (error) throw error;
+
+      if (refreshProfile) {
+        await refreshProfile();
+      }
 
       toast.success(t('common.success'));
       onOpenChange(false);
@@ -95,15 +126,23 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
                 )}
               </Avatar>
               <label className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
-                <Camera className="w-4 h-4 text-primary-foreground" />
+                {uploading ? (
+                  <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4 text-primary-foreground" />
+                )}
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={handleAvatarChange}
+                  disabled={uploading}
                 />
               </label>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Натисніть на іконку камери для завантаження фото
+            </p>
           </div>
 
           {/* Full Name */}

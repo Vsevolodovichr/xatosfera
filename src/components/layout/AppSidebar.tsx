@@ -15,6 +15,8 @@ import {
   X,
   StickyNote,
   CalendarDays,
+  FolderOpen,
+  Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -22,6 +24,7 @@ import { useState } from 'react';
 const navItems = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard', permission: null },
   { key: 'properties', icon: Building2, path: '/properties', permission: null },
+  { key: 'documents', icon: FolderOpen, path: '/documents', permission: null },
   { key: 'reports', icon: FileText, path: '/reports', permission: null },
   { key: 'notes', icon: StickyNote, path: '/notes', permission: null },
   { key: 'calendar', icon: CalendarDays, path: '/calendar', permission: null },
@@ -51,6 +54,7 @@ export const AppSidebar = () => {
   const getNavLabel = (key: string) => {
     if (key === 'notes') return language === 'uk' ? 'Нотатки' : 'Notes';
     if (key === 'calendar') return language === 'uk' ? 'Календар' : 'Calendar';
+    if (key === 'documents') return language === 'uk' ? 'Документи' : 'Documents';
     return t(`nav.${key}`);
   };
 
@@ -64,10 +68,10 @@ export const AppSidebar = () => {
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center shadow-accent">
-            <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
+            <Home className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-sidebar-foreground">RealEstate</h1>
+            <h1 className="font-bold text-lg text-sidebar-foreground">Хатосфера</h1>
             <p className="text-xs text-sidebar-foreground/60">CRM System</p>
           </div>
         </div>
@@ -145,12 +149,12 @@ export const AppSidebar = () => {
     <>
       {/* Mobile Toggle - positioned at bottom left corner */}
       <Button
-        variant="ghost"
+        variant="outline"
         size="icon"
-        className="fixed bottom-4 left-4 z-50 lg:hidden bg-card shadow-lg border"
+        className="fixed bottom-4 left-4 z-50 lg:hidden bg-card shadow-lg border border-border"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {mobileOpen ? <X className="h-5 w-5 text-foreground" /> : <Menu className="h-5 w-5 text-foreground" />}
       </Button>
 
       {/* Mobile Overlay */}

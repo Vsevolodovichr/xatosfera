@@ -109,18 +109,24 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          area: number | null
           closing_amount: number | null
           commission: number | null
+          condition: string | null
           created_at: string
           deal_type: Database["public"]["Enums"]["deal_type"]
           description: string | null
+          documents: string[] | null
           external_link: string | null
+          floor: number | null
+          heating: string | null
           id: string
           owner_name: string
           owner_phone: string
           photos: string[] | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
+          rooms: number | null
           status: Database["public"]["Enums"]["property_status"]
           status_date_from: string | null
           status_date_to: string | null
@@ -129,18 +135,24 @@ export type Database = {
         }
         Insert: {
           address: string
+          area?: number | null
           closing_amount?: number | null
           commission?: number | null
+          condition?: string | null
           created_at?: string
           deal_type?: Database["public"]["Enums"]["deal_type"]
           description?: string | null
+          documents?: string[] | null
           external_link?: string | null
+          floor?: number | null
+          heating?: string | null
           id?: string
           owner_name: string
           owner_phone: string
           photos?: string[] | null
           price: number
           property_type?: Database["public"]["Enums"]["property_type"]
+          rooms?: number | null
           status?: Database["public"]["Enums"]["property_status"]
           status_date_from?: string | null
           status_date_to?: string | null
@@ -149,18 +161,24 @@ export type Database = {
         }
         Update: {
           address?: string
+          area?: number | null
           closing_amount?: number | null
           commission?: number | null
+          condition?: string | null
           created_at?: string
           deal_type?: Database["public"]["Enums"]["deal_type"]
           description?: string | null
+          documents?: string[] | null
           external_link?: string | null
+          floor?: number | null
+          heating?: string | null
           id?: string
           owner_name?: string
           owner_phone?: string
           photos?: string[] | null
           price?: number
           property_type?: Database["public"]["Enums"]["property_type"]
+          rooms?: number | null
           status?: Database["public"]["Enums"]["property_status"]
           status_date_from?: string | null
           status_date_to?: string | null
@@ -218,6 +236,39 @@ export type Database = {
           signed_at?: string | null
           total_amount?: number | null
           total_commission?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_documents: {
+        Row: {
+          category: string
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }
