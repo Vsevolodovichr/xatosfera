@@ -3,15 +3,18 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { ProfileSettingsDialog } from '@/components/profile/ProfileSettingsDialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   LayoutDashboard,
   Building2,
   FileText,
   Users,
-  Settings,
   LogOut,
   Menu,
   X,
+  StickyNote,
+  CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -20,14 +23,17 @@ const navItems = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard', permission: null },
   { key: 'properties', icon: Building2, path: '/properties', permission: null },
   { key: 'reports', icon: FileText, path: '/reports', permission: null },
+  { key: 'notes', icon: StickyNote, path: '/notes', permission: null },
+  { key: 'calendar', icon: CalendarDays, path: '/calendar', permission: null },
   { key: 'users', icon: Users, path: '/users', permission: 'manage_users' },
 ];
 
 export const AppSidebar = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { profile, role, signOut, hasPermission } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const getRoleLabel = () => {
     switch (role) {
@@ -40,6 +46,12 @@ export const AppSidebar = () => {
       default:
         return '';
     }
+  };
+
+  const getNavLabel = (key: string) => {
+    if (key === 'notes') return language === 'uk' ? 'Нотатки' : 'Notes';
+    if (key === 'calendar') return language === 'uk' ? 'Календар' : 'Calendar';
+    return t(`nav.${key}`);
   };
 
   const filteredItems = navItems.filter(
@@ -84,7 +96,7 @@ export const AppSidebar = () => {
                   isActive && 'text-sidebar-primary-foreground'
                 )}
               />
-              <span className="font-medium">{t(`nav.${item.key}`)}</span>
+              <span className="font-medium">{getNavLabel(item.key)}</span>
             </Link>
           );
         })}
@@ -95,17 +107,26 @@ export const AppSidebar = () => {
         <LanguageToggle />
         
         {profile && (
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50">
-            <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-sm font-semibold text-primary-foreground">
-              {profile.full_name?.charAt(0).toUpperCase() || 'U'}
-            </div>
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-left"
+          >
+            <Avatar className="w-9 h-9">
+              {(profile as any).avatar_url ? (
+                <AvatarImage src={(profile as any).avatar_url} alt={profile.full_name} />
+              ) : (
+                <AvatarFallback className="gradient-primary text-primary-foreground text-sm font-semibold">
+                  {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+                </AvatarFallback>
+              )}
+            </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {profile.full_name}
               </p>
               <p className="text-xs text-sidebar-foreground/60">{getRoleLabel()}</p>
             </div>
-          </div>
+          </button>
         )}
 
         <Button
@@ -122,11 +143,11 @@ export const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile Toggle */}
+      {/* Mobile Toggle - positioned at bottom left corner */}
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 lg:hidden bg-card shadow-md"
+        className="fixed bottom-4 left-4 z-50 lg:hidden bg-card shadow-lg border"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -149,6 +170,9 @@ export const AppSidebar = () => {
       >
         <SidebarContent />
       </aside>
+
+      {/* Profile Settings Dialog */}
+      <ProfileSettingsDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </>
   );
 };
