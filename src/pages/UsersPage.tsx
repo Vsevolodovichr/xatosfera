@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -22,9 +22,11 @@ import {
   Edit,
   Trash2,
   Key,
-  Mail,
   Calendar,
   Shield,
+  CheckCircle,
+  Clock,
+  UserCheck,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,10 +42,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
+import { CreateUserDialog } from '@/components/users/CreateUserDialog';
 
 interface UserWithRole {
   id: string;
@@ -52,15 +54,18 @@ interface UserWithRole {
   secret_key: string | null;
   created_at: string;
   role: string;
+  approved: boolean;
+  approved_at: string | null;
 }
 
 export const UsersPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, role: currentUserRole, hasPermission } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [newRole, setNewRole] = useState('');
 
@@ -72,27 +77,26 @@ export const UsersPage = () => {
     if (!user) return;
 
     try {
-      // Fetch profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
 
       if (profilesError) throw profilesError;
 
-      // Fetch roles
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('*');
 
       if (rolesError) throw rolesError;
 
-      // Combine data
       const combined = profiles?.map((profile) => {
         const userRole = roles?.find((r) => r.user_id === profile.id);
         return {
           ...profile,
-          email: '', // We don't have access to auth.users email directly
+          email: '',
           role: userRole?.role || 'manager',
+          approved: profile.approved ?? false,
+          approved_at: profile.approved_at,
         };
       }) || [];
 
@@ -105,10 +109,30 @@ export const UsersPage = () => {
     }
   };
 
+  const handleApproveUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          approved: true,
+          approved_by: user?.id,
+          approved_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast.success('Користувача підтверджено');
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error approving user:', error);
+      toast.error('Помилка підтвердження');
+    }
+  };
+
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
 
-    // Check permissions
     if (currentUserRole === 'top_manager' && newRole !== 'manager') {
       toast.error('Ви можете призначати тільки роль менеджера');
       return;
@@ -136,8 +160,6 @@ export const UsersPage = () => {
     if (!confirm('Ви впевнені, що хочете видалити цього користувача?')) return;
 
     try {
-      // Note: This will cascade delete the profile and roles
-      // In production, you'd typically use an admin API to delete auth users
       const { error } = await supabase.from('profiles').delete().eq('id', userId);
 
       if (error) throw error;
@@ -151,24 +173,21 @@ export const UsersPage = () => {
   };
 
   const getRoleBadge = (role: string) => {
-    const variants: Record<string, { label: string; className: string; icon: typeof Shield }> = {
+    const variants: Record<string, { label: string; className: string }> = {
       superuser: {
         label: t('users.superuser'),
         className: 'bg-destructive/10 text-destructive border-destructive/20',
-        icon: Shield,
       },
       top_manager: {
         label: t('users.topManager'),
         className: 'bg-primary/10 text-primary border-primary/20',
-        icon: Shield,
       },
       manager: {
         label: t('users.manager'),
         className: 'bg-info/10 text-info border-info/20',
-        icon: Shield,
       },
     };
-    const variant = variants[role] || { label: role, className: '', icon: Shield };
+    const variant = variants[role] || { label: role, className: '' };
     return (
       <Badge className={`${variant.className} border`}>
         {variant.label}
@@ -186,6 +205,8 @@ export const UsersPage = () => {
     return false;
   };
 
+  const canCreateUser = currentUserRole === 'superuser' || currentUserRole === 'top_manager';
+
   return (
     <AppLayout>
       <div className="space-y-6 animate-fade-in">
@@ -194,9 +215,18 @@ export const UsersPage = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('users.title')}</h1>
             <p className="text-muted-foreground mt-1">
-              Управління користувачами системи
+              {language === 'uk' ? 'Управління користувачами системи' : 'System user management'}
             </p>
           </div>
+          {canCreateUser && (
+            <Button
+              onClick={() => setCreateDialogOpen(true)}
+              className="gradient-primary shadow-accent"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {t('users.add')}
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -205,7 +235,7 @@ export const UsersPage = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Пошук користувачів..."
+                placeholder={language === 'uk' ? 'Пошук користувачів...' : 'Search users...'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -252,6 +282,17 @@ export const UsersPage = () => {
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           {getRoleBadge(userItem.role)}
+                          {userItem.approved ? (
+                            <Badge className="bg-success/10 text-success border-success/20 border">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              {language === 'uk' ? 'Підтверджено' : 'Approved'}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-warning/10 text-warning border-warning/20 border">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {language === 'uk' ? 'Очікує' : 'Pending'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -261,48 +302,67 @@ export const UsersPage = () => {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {format(new Date(userItem.created_at), 'd MMM yyyy', { locale: uk })}
+                          {format(new Date(userItem.created_at), 'd MMM yyyy', {
+                            locale: language === 'uk' ? uk : undefined,
+                          })}
                         </span>
                       </div>
                       {userItem.secret_key && (
                         <div className="flex items-center gap-2">
                           <Key className="h-4 w-4 text-success" />
-                          <span className="text-success">Ключ активний</span>
+                          <span className="text-success">
+                            {language === 'uk' ? 'Ключ активний' : 'Key active'}
+                          </span>
                         </div>
                       )}
                     </div>
 
                     {/* Actions */}
-                    {canEditUser(userItem.role) && userItem.id !== user?.id && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedUser(userItem);
-                              setNewRole(userItem.role);
-                              setEditDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Змінити роль
-                          </DropdownMenuItem>
-                          {currentUserRole === 'superuser' && (
+                    <div className="flex items-center gap-2">
+                      {/* Approve button for pending users */}
+                      {!userItem.approved && canEditUser(userItem.role) && userItem.id !== user?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleApproveUser(userItem.id)}
+                          className="text-success border-success/30 hover:bg-success/10"
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          {language === 'uk' ? 'Підтвердити' : 'Approve'}
+                        </Button>
+                      )}
+                      
+                      {canEditUser(userItem.role) && userItem.id !== user?.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => handleDeleteUser(userItem.id)}
-                              className="text-destructive"
+                              onClick={() => {
+                                setSelectedUser(userItem);
+                                setNewRole(userItem.role);
+                                setEditDialogOpen(true);
+                              }}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('users.delete')}
+                              <Edit className="mr-2 h-4 w-4" />
+                              {language === 'uk' ? 'Змінити роль' : 'Change role'}
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                            {currentUserRole === 'superuser' && (
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteUser(userItem.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {t('users.delete')}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -315,7 +375,9 @@ export const UsersPage = () => {
                 <Users className="h-10 w-10 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">{t('common.noData')}</h3>
-              <p className="text-muted-foreground">Користувачів не знайдено</p>
+              <p className="text-muted-foreground">
+                {language === 'uk' ? 'Користувачів не знайдено' : 'No users found'}
+              </p>
             </CardContent>
           </Card>
         )}
@@ -324,7 +386,9 @@ export const UsersPage = () => {
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Змінити роль користувача</DialogTitle>
+              <DialogTitle>
+                {language === 'uk' ? 'Змінити роль користувача' : 'Change user role'}
+              </DialogTitle>
               <DialogDescription>
                 {selectedUser?.full_name}
               </DialogDescription>
@@ -353,6 +417,14 @@ export const UsersPage = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Create User Dialog */}
+        <CreateUserDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onUserCreated={fetchUsers}
+          canCreateTopManager={currentUserRole === 'superuser'}
+        />
       </div>
     </AppLayout>
   );

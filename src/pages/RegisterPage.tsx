@@ -38,7 +38,7 @@ export const RegisterPage = () => {
 
     try {
       await signUp(email, password, fullName);
-      toast.success('Реєстрація успішна! Перевірте пошту для підтвердження.');
+      toast.success('Реєстрація успішна! Перевірте пошту для верифікації. Після підтвердження email, ваш акаунт має бути схвалений адміністратором.');
       navigate('/login');
     } catch (error: any) {
       toast.error(error.message || t('common.error'));

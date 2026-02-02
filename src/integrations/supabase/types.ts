@@ -14,25 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_events: {
+        Row: {
+          client_name: string | null
+          client_phone: string | null
+          created_at: string
+          description: string | null
+          end_time: string | null
+          event_type: string
+          id: string
+          property_id: string | null
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          event_type?: string
+          id?: string
+          property_id?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          event_type?: string
+          id?: string
+          property_id?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          avatar_url: string | null
           created_at: string
           full_name: string
           id: string
+          phone: string | null
           secret_key: string | null
           updated_at: string
         }
         Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          avatar_url?: string | null
           created_at?: string
           full_name: string
           id: string
+          phone?: string | null
           secret_key?: string | null
           updated_at?: string
         }
         Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          avatar_url?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          phone?: string | null
           secret_key?: string | null
           updated_at?: string
         }
@@ -150,6 +218,33 @@ export type Database = {
           signed_at?: string | null
           total_amount?: number | null
           total_commission?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notes: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }
