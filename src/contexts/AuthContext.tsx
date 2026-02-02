@@ -21,6 +21,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasPermission: (action: string) => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -128,6 +129,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return permissions[role]?.includes(action) || false;
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -139,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signUp,
       signOut,
       hasPermission,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

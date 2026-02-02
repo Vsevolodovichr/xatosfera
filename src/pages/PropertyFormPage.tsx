@@ -15,19 +15,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Loader2, Link as LinkIcon, Upload, X } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { ArrowLeft, Loader2, Link as LinkIcon, Upload, X, FileText, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 export const PropertyFormPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [uploadingDocs, setUploadingDocs] = useState(false);
   
   const [formData, setFormData] = useState({
     address: '',
@@ -44,7 +51,17 @@ export const PropertyFormPage = () => {
     commission: '',
     external_link: '',
     photos: [] as string[],
+    // General fields
+    area: '',
+    floor: '',
+    heating: '',
+    rooms: '',
+    condition: '',
+    // Documents
+    documents: [] as string[],
   });
+
+  const [documentFiles, setDocumentFiles] = useState<{ name: string; url: string }[]>([]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -53,7 +70,6 @@ export const PropertyFormPage = () => {
   const handleImport = async () => {
     if (!importUrl) return;
 
-    // Check if it's a valid OLX or DomRia link
     if (!importUrl.includes('olx.ua') && !importUrl.includes('dom.ria.com')) {
       toast.error('Підтримуються тільки посилання з OLX.ua та DomRia');
       return;
@@ -61,13 +77,68 @@ export const PropertyFormPage = () => {
 
     setImportLoading(true);
     try {
-      // For now, just set the external link since scraping requires backend
       setFormData((prev) => ({ ...prev, external_link: importUrl }));
       toast.info('Посилання додано. Заповніть решту полів вручну.');
     } catch (error) {
       toast.error('Помилка імпорту даних');
     } finally {
       setImportLoading(false);
+    }
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !user) return;
+
+    setUploadingDocs(true);
+    try {
+      const newDocs: { name: string; url: string }[] = [];
+
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}-${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('property-documents')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('property-documents')
+          .getPublicUrl(fileName);
+
+        newDocs.push({ name: file.name, url: urlData.publicUrl });
+      }
+
+      setDocumentFiles((prev) => [...prev, ...newDocs]);
+      setFormData((prev) => ({
+        ...prev,
+        documents: [...prev.documents, ...newDocs.map((d) => d.url)],
+      }));
+
+      toast.success('Документи завантажено');
+    } catch (error: any) {
+      console.error('Error uploading documents:', error);
+      toast.error('Помилка завантаження документів');
+    } finally {
+      setUploadingDocs(false);
+    }
+  };
+
+  const removeDocument = async (index: number) => {
+    const doc = documentFiles[index];
+    try {
+      const filePath = doc.url.split('/').slice(-2).join('/');
+      await supabase.storage.from('property-documents').remove([filePath]);
+
+      setDocumentFiles((prev) => prev.filter((_, i) => i !== index));
+      setFormData((prev) => ({
+        ...prev,
+        documents: prev.documents.filter((_, i) => i !== index),
+      }));
+    } catch (error) {
+      console.error('Error removing document:', error);
     }
   };
 
@@ -93,6 +164,12 @@ export const PropertyFormPage = () => {
         commission: formData.commission ? parseFloat(formData.commission) : null,
         external_link: formData.external_link || null,
         photos: formData.photos,
+        area: formData.area ? parseFloat(formData.area) : null,
+        floor: formData.floor ? parseInt(formData.floor) : null,
+        heating: formData.heating || null,
+        rooms: formData.rooms ? parseInt(formData.rooms) : null,
+        condition: formData.condition || null,
+        documents: formData.documents,
       });
 
       if (error) throw error;
@@ -121,7 +198,9 @@ export const PropertyFormPage = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t('properties.add')}</h1>
-            <p className="text-muted-foreground">Заповніть інформацію про об'єкт</p>
+            <p className="text-muted-foreground">
+              {language === 'uk' ? 'Заповніть інформацію про об\'єкт' : 'Fill in property information'}
+            </p>
           </div>
         </div>
 
@@ -317,6 +396,174 @@ export const PropertyFormPage = () => {
                 </div>
               )}
 
+              {/* General Info Accordion */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="general">
+                  <AccordionTrigger className="text-base font-medium">
+                    {language === 'uk' ? 'Загальне' : 'General'}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="area">
+                          {language === 'uk' ? 'Площа (м²)' : 'Area (m²)'}
+                        </Label>
+                        <Input
+                          id="area"
+                          type="number"
+                          step="0.1"
+                          value={formData.area}
+                          onChange={(e) => handleChange('area', e.target.value)}
+                          placeholder="50"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="floor">
+                          {language === 'uk' ? 'Поверх' : 'Floor'}
+                        </Label>
+                        <Input
+                          id="floor"
+                          type="number"
+                          value={formData.floor}
+                          onChange={(e) => handleChange('floor', e.target.value)}
+                          placeholder="5"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="rooms">
+                          {language === 'uk' ? 'Кількість кімнат' : 'Rooms'}
+                        </Label>
+                        <Input
+                          id="rooms"
+                          type="number"
+                          value={formData.rooms}
+                          onChange={(e) => handleChange('rooms', e.target.value)}
+                          placeholder="2"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>{language === 'uk' ? 'Опалення' : 'Heating'}</Label>
+                        <Select
+                          value={formData.heating}
+                          onValueChange={(value) => handleChange('heating', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={language === 'uk' ? 'Оберіть' : 'Select'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="central">
+                              {language === 'uk' ? 'Центральне' : 'Central'}
+                            </SelectItem>
+                            <SelectItem value="individual">
+                              {language === 'uk' ? 'Індивідуальне' : 'Individual'}
+                            </SelectItem>
+                            <SelectItem value="gas">
+                              {language === 'uk' ? 'Газове' : 'Gas'}
+                            </SelectItem>
+                            <SelectItem value="electric">
+                              {language === 'uk' ? 'Електричне' : 'Electric'}
+                            </SelectItem>
+                            <SelectItem value="none">
+                              {language === 'uk' ? 'Відсутнє' : 'None'}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>{language === 'uk' ? 'Стан' : 'Condition'}</Label>
+                        <Select
+                          value={formData.condition}
+                          onValueChange={(value) => handleChange('condition', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={language === 'uk' ? 'Оберіть' : 'Select'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">
+                              {language === 'uk' ? 'Новобудова' : 'New'}
+                            </SelectItem>
+                            <SelectItem value="renovated">
+                              {language === 'uk' ? 'З ремонтом' : 'Renovated'}
+                            </SelectItem>
+                            <SelectItem value="good">
+                              {language === 'uk' ? 'Хороший' : 'Good'}
+                            </SelectItem>
+                            <SelectItem value="needs_repair">
+                              {language === 'uk' ? 'Потребує ремонту' : 'Needs Repair'}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="documents">
+                  <AccordionTrigger className="text-base font-medium">
+                    {language === 'uk' ? 'Документи' : 'Documents'}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 pt-4">
+                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          onChange={handleDocumentUpload}
+                          className="hidden"
+                          id="doc-upload"
+                          disabled={uploadingDocs}
+                        />
+                        <label htmlFor="doc-upload" className="cursor-pointer">
+                          {uploadingDocs ? (
+                            <Loader2 className="h-8 w-8 mx-auto text-muted-foreground animate-spin" />
+                          ) : (
+                            <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                          )}
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {language === 'uk'
+                              ? 'Натисніть для завантаження документів'
+                              : 'Click to upload documents'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            PDF, JPG, PNG, DOC
+                          </p>
+                        </label>
+                      </div>
+
+                      {documentFiles.length > 0 && (
+                        <div className="space-y-2">
+                          {documentFiles.map((doc, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                            >
+                              <div className="flex items-center gap-3">
+                                <FileText className="h-5 w-5 text-primary" />
+                                <span className="text-sm truncate max-w-[200px]">{doc.name}</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeDocument(index)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">{t('properties.description')}</Label>
@@ -324,7 +571,7 @@ export const PropertyFormPage = () => {
                   id="description"
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
-                  placeholder="Опис об'єкту нерухомості..."
+                  placeholder={language === 'uk' ? 'Опис об\'єкту нерухомості...' : 'Property description...'}
                   rows={4}
                 />
               </div>
