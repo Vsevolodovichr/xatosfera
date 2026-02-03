@@ -51,7 +51,7 @@ interface UserWithRole {
   id: string;
   full_name: string;
   email: string;
-  secret_key: string | null;
+  has_secret_key: boolean; // Only store presence, never the actual key
   created_at: string;
   role: string;
   approved: boolean;
@@ -77,23 +77,29 @@ export const UsersPage = () => {
     if (!user) return;
 
     try {
+      // SECURITY: Explicitly select columns, excluding secret_key to prevent exposure
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*');
+        .select('id, full_name, created_at, phone, avatar_url, approved, approved_at, approved_by, updated_at');
 
       if (profilesError) throw profilesError;
 
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('*');
+        .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
+      // SECURITY: Check for secret_key presence server-side only via RPC if needed
+      // For now, we simply don't expose this information to the client
       const combined = profiles?.map((profile) => {
         const userRole = roles?.find((r) => r.user_id === profile.id);
         return {
-          ...profile,
+          id: profile.id,
+          full_name: profile.full_name,
           email: '',
+          has_secret_key: false, // This info is no longer sent to client for security
+          created_at: profile.created_at,
           role: userRole?.role || 'manager',
           approved: profile.approved ?? false,
           approved_at: profile.approved_at,
@@ -307,14 +313,7 @@ export const UsersPage = () => {
                           })}
                         </span>
                       </div>
-                      {userItem.secret_key && (
-                        <div className="flex items-center gap-2">
-                          <Key className="h-4 w-4 text-success" />
-                          <span className="text-success">
-                            {language === 'uk' ? 'Ключ активний' : 'Key active'}
-                          </span>
-                        </div>
-                      )}
+                      {/* Secret key status removed for security - keys are handled server-side only */}
                     </div>
 
                     {/* Actions */}
