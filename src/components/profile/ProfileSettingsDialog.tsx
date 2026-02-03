@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { generateSafeFilename, ALLOWED_IMAGE_TYPES, ALLOWED_IMAGE_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/file-validation';
 import {
   Dialog,
   DialogContent,
@@ -28,31 +29,68 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
   const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarPath, setAvatarPath] = useState(''); // Store path, not URL
+  const [avatarSignedUrl, setAvatarSignedUrl] = useState(''); // Signed URL for display
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Function to get signed URL for avatar
+  const getSignedAvatarUrl = useCallback(async (path: string) => {
+    if (!path) {
+      setAvatarSignedUrl('');
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(path, 3600); // 1 hour expiry
+      
+      if (error) throw error;
+      setAvatarSignedUrl(data.signedUrl);
+    } catch (error) {
+      console.error('Error getting signed URL:', error);
+      setAvatarSignedUrl('');
+    }
+  }, []);
 
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
       setPhone((profile as any).phone || '');
-      setAvatarUrl((profile as any).avatar_url || '');
+      const path = (profile as any).avatar_url || '';
+      setAvatarPath(path);
+      // Get signed URL for display
+      if (path) {
+        getSignedAvatarUrl(path);
+      }
     }
-  }, [profile]);
+  }, [profile, getSignedAvatarUrl]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Validate file
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`Файл занадто великий. Максимум: ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+      return;
+    }
+
+    const allowedMimeTypes = Object.keys(ALLOWED_IMAGE_TYPES);
+    if (!allowedMimeTypes.includes(file.type)) {
+      toast.error(`Непідтримуваний формат. Дозволені: ${ALLOWED_IMAGE_EXTENSIONS.join(', ')}`);
+      return;
+    }
+
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // Generate safe filename
+      const fileName = generateSafeFilename(user.id, file.name);
 
       // Delete old avatar if exists
-      if (avatarUrl && avatarUrl.includes('avatars')) {
-        const oldPath = avatarUrl.split('/').slice(-2).join('/');
-        await supabase.storage.from('avatars').remove([oldPath]);
+      if (avatarPath) {
+        await supabase.storage.from('avatars').remove([avatarPath]);
       }
 
       const { error: uploadError } = await supabase.storage
@@ -61,11 +99,12 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      setAvatarUrl(urlData.publicUrl);
+      // Store path (not public URL since bucket is now private)
+      setAvatarPath(fileName);
+      
+      // Get signed URL for display
+      await getSignedAvatarUrl(fileName);
+      
       toast.success('Фото завантажено');
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
@@ -85,7 +124,7 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
         .update({
           full_name: fullName,
           phone: phone,
-          avatar_url: avatarUrl || null,
+          avatar_url: avatarPath || null, // Store path, not URL
         })
         .eq('id', user.id);
 
@@ -117,8 +156,8 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <Avatar className="w-24 h-24">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} alt={fullName} />
+                {avatarSignedUrl ? (
+                  <AvatarImage src={avatarSignedUrl} alt={fullName} />
                 ) : (
                   <AvatarFallback className="gradient-primary text-primary-foreground text-2xl">
                     {fullName?.charAt(0).toUpperCase() || 'U'}

@@ -12,6 +12,16 @@ export const ALLOWED_DOCUMENT_TYPES = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
 } as const;
 
+// Allowed MIME types for images only
+export const ALLOWED_IMAGE_TYPES = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/gif': ['.gif'],
+  'image/webp': ['.webp'],
+} as const;
+
+export const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
 // Allowed extensions (for display)
 export const ALLOWED_DOCUMENT_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
 
