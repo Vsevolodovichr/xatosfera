@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 Deno.serve(async (req) => {
@@ -25,32 +25,41 @@ Deno.serve(async (req) => {
     // Get the calling user's token
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('No authorization header provided')
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Create client with user's token to verify permissions
-    const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
-    })
-
-    // Get calling user's info
-    const { data: { user: callingUser }, error: userError } = await supabaseUser.auth.getUser()
+    // Extract token from header
+    const token = authHeader.replace('Bearer ', '')
+    
+    // Verify the user's token using admin client
+    const { data: { user: callingUser }, error: userError } = await supabaseAdmin.auth.getUser(token)
+    
     if (userError || !callingUser) {
+      console.error('User verification failed:', userError?.message)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+
+    console.log('Calling user:', callingUser.id, callingUser.email)
 
     // Check if calling user has permission to create users
-    const { data: roleData } = await supabaseAdmin
+    const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', callingUser.id)
-      .single()
+      .maybeSingle()
+
+    if (roleError) {
+      console.error('Role fetch error:', roleError.message)
+    }
+
+    console.log('User role:', roleData?.role)
 
     if (!roleData || (roleData.role !== 'superuser' && roleData.role !== 'top_manager')) {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
@@ -59,7 +68,10 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { email, password, fullName, role } = await req.json()
+    const body = await req.json()
+    const { email, password, fullName, role } = body
+    
+    console.log('Creating user with email:', email, 'role:', role)
 
     // Validate required fields
     if (!email || !password || !fullName) {
@@ -78,6 +90,7 @@ Deno.serve(async (req) => {
     }
 
     // Create user with admin API (doesn't affect current session)
+    // The handle_new_user trigger will create profile and role automatically
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -86,23 +99,30 @@ Deno.serve(async (req) => {
     })
 
     if (createError) {
+      console.error('Create user error:', createError.message, createError)
       return new Response(JSON.stringify({ error: createError.message }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Update role if not manager (manager is default)
+    console.log('User created:', newUser.user?.id)
+
+    // Update role if not manager (manager is default from trigger)
     if (role && role !== 'manager' && newUser.user) {
-      await supabaseAdmin
+      const { error: roleUpdateError } = await supabaseAdmin
         .from('user_roles')
         .update({ role })
         .eq('user_id', newUser.user.id)
+      
+      if (roleUpdateError) {
+        console.error('Role update error:', roleUpdateError.message)
+      }
     }
 
-    // Auto-approve the user
+    // Auto-approve the user (trigger sets approved=false for non-first users)
     if (newUser.user) {
-      await supabaseAdmin
+      const { error: approveError } = await supabaseAdmin
         .from('profiles')
         .update({ 
           approved: true, 
@@ -110,7 +130,13 @@ Deno.serve(async (req) => {
           approved_by: callingUser.id 
         })
         .eq('id', newUser.user.id)
+      
+      if (approveError) {
+        console.error('Approve error:', approveError.message)
+      }
     }
+
+    console.log('User setup complete')
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -122,6 +148,7 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Unexpected error:', message)
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
