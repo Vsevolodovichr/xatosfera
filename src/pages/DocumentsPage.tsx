@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateFile, generateSafeFilename, ALLOWED_DOCUMENT_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/file-validation';
 
 interface Document {
   id: string;
@@ -118,10 +119,17 @@ export const DocumentsPage = () => {
       return;
     }
 
+    // SECURITY: Validate file before upload
+    const validation = validateFile(newDocument.file);
+    if (!validation.valid) {
+      toast.error(validation.error || 'Невалідний файл');
+      return;
+    }
+
     setUploading(true);
     try {
-      const fileExt = newDocument.file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // Use safe filename generation to prevent path injection
+      const fileName = generateSafeFilename(user.id, newDocument.file.name);
 
       const { error: uploadError } = await supabase.storage
         .from('documents')

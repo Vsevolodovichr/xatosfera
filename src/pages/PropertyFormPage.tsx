@@ -22,6 +22,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ArrowLeft, Loader2, Link as LinkIcon, Upload, X, FileText, Trash2 } from 'lucide-react';
+import { validateFile, generateSafeFilename, ALLOWED_DOCUMENT_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/file-validation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -93,31 +94,37 @@ export const PropertyFormPage = () => {
     setUploadingDocs(true);
     try {
       const newDocs: { name: string; url: string }[] = [];
+      const fileArray = Array.from(files);
 
-      for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}-${file.name}`;
+      // SECURITY: Validate all files before uploading
+      for (const file of fileArray) {
+        const validation = validateFile(file);
+        if (!validation.valid) {
+          toast.error(`${file.name}: ${validation.error}`);
+          continue;
+        }
+
+        // Use safe filename generation to prevent path injection
+        const safeFileName = generateSafeFilename(user.id, file.name);
 
         const { error: uploadError } = await supabase.storage
           .from('property-documents')
-          .upload(fileName, file);
+          .upload(safeFileName, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from('property-documents')
-          .getPublicUrl(fileName);
-
-        newDocs.push({ name: file.name, url: urlData.publicUrl });
+        // Store the file path for signed URL access (not public URL)
+        newDocs.push({ name: file.name, url: safeFileName });
       }
 
-      setDocumentFiles((prev) => [...prev, ...newDocs]);
-      setFormData((prev) => ({
-        ...prev,
-        documents: [...prev.documents, ...newDocs.map((d) => d.url)],
-      }));
-
-      toast.success('Документи завантажено');
+      if (newDocs.length > 0) {
+        setDocumentFiles((prev) => [...prev, ...newDocs]);
+        setFormData((prev) => ({
+          ...prev,
+          documents: [...prev.documents, ...newDocs.map((d) => d.url)],
+        }));
+        toast.success('Документи завантажено');
+      }
     } catch (error: any) {
       console.error('Error uploading documents:', error);
       toast.error('Помилка завантаження документів');
