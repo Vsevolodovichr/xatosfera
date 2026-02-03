@@ -55,52 +55,43 @@ export const CreateUserDialog = ({
     setLoading(true);
 
     try {
-      // Create user via Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { full_name: fullName },
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        // Update the role if not manager (manager is default)
-        if (role !== 'manager') {
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .update({ role: role as any })
-            .eq('user_id', data.user.id);
-
-          if (roleError) {
-            console.error('Error setting role:', roleError);
-          }
+      // Get current session for authorization
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Call edge function to create user (doesn't affect current session)
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionData.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            fullName,
+            role,
+          }),
         }
+      );
 
-        // Auto-approve the user created by superuser/top-manager
-        const { error: approveError } = await supabase
-          .from('profiles')
-          .update({ approved: true, approved_at: new Date().toISOString() })
-          .eq('id', data.user.id);
+      const result = await response.json();
 
-        if (approveError) {
-          console.error('Error approving user:', approveError);
-        }
-
-        toast.success('Користувача створено. Йому надіслано email для верифікації.');
-        
-        // Reset form
-        setEmail('');
-        setPassword('');
-        setFullName('');
-        setRole('manager');
-        
-        onOpenChange(false);
-        onUserCreated();
+      if (!response.ok) {
+        throw new Error(result.error || 'Помилка створення користувача');
       }
+
+      toast.success('Користувача створено успішно!');
+      
+      // Reset form
+      setEmail('');
+      setPassword('');
+      setFullName('');
+      setRole('manager');
+      
+      onOpenChange(false);
+      onUserCreated();
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast.error(error.message || 'Помилка створення користувача');
