@@ -7,8 +7,11 @@ export type UserRole = 'superuser' | 'top_manager' | 'manager';
 interface Profile {
   id: string;
   full_name: string;
-  secret_key?: string;
   created_at: string;
+  phone?: string;
+  avatar_url?: string;
+  approved?: boolean;
+  approved_at?: string;
 }
 
 interface AuthContextType {
@@ -35,9 +38,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
+      // Only select non-sensitive fields - secret_key is never sent to client
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, created_at, phone, avatar_url, approved, approved_at, approved_by, updated_at')
         .eq('id', userId)
         .maybeSingle();
 

@@ -38,10 +38,28 @@ interface Document {
   id: string;
   title: string;
   category: string;
-  file_url: string;
+  file_url: string; // This now stores the file path, not a public URL
   file_name: string;
   created_at: string;
 }
+
+// Helper to get signed URL for secure document access
+const getSignedDocumentUrl = async (filePath: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+    
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error getting signed URL:', error);
+    return null;
+  }
+};
 
 const CATEGORIES = [
   { value: 'fop', label: 'Документи ФОП', icon: FileCheck },
@@ -111,15 +129,12 @@ export const DocumentsPage = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
+      // Store the file path (not public URL) for secure access via signed URLs
       const { error: dbError } = await supabase.from('user_documents').insert({
         user_id: user.id,
         title: newDocument.title,
         category: newDocument.category,
-        file_url: urlData.publicUrl,
+        file_url: fileName, // Store path, not public URL
         file_name: newDocument.file.name,
       });
 
@@ -152,6 +167,21 @@ export const DocumentsPage = () => {
     } catch (error: any) {
       console.error('Error deleting document:', error);
       toast.error('Помилка видалення');
+    }
+  };
+
+  const handleDownload = async (doc: Document) => {
+    try {
+      // Get signed URL for secure access
+      const signedUrl = await getSignedDocumentUrl(doc.file_url);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        toast.error('Помилка отримання доступу до документа');
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Помилка завантаження документа');
     }
   };
 
@@ -330,7 +360,7 @@ export const DocumentsPage = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => window.open(doc.file_url, '_blank')}
+                          onClick={() => handleDownload(doc)}
                         >
                           <Download className="h-4 w-4" />
                         </Button>

@@ -162,31 +162,29 @@ export const ReportsPage = () => {
   const handleSignReport = async () => {
     if (!selectedReport || !secretKey) return;
 
-    // Verify secret key matches user's key
-    if (secretKey !== profile?.secret_key) {
-      toast.error('Невірний секретний ключ');
-      return;
-    }
-
     try {
-      // Create a simple signature (hash of report data + secret key)
-      const signatureData = `${selectedReport.id}-${selectedReport.period_start}-${selectedReport.period_end}-${secretKey}`;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(signatureData);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      // Call edge function to validate secret key and sign report server-side
+      const { data, error } = await supabase.functions.invoke('sign-report', {
+        body: {
+          reportId: selectedReport.id,
+          secretKey: secretKey,
+        },
+      });
 
-      const { error } = await supabase
-        .from('reports')
-        .update({
-          signature: signature.substring(0, 64),
-          signed_at: new Date().toISOString(),
-          sent_at: new Date().toISOString(),
-        })
-        .eq('id', selectedReport.id);
+      if (error) {
+        console.error('Error signing report:', error);
+        toast.error('Помилка підписання звіту');
+        return;
+      }
 
-      if (error) throw error;
+      if (data?.error) {
+        if (data.error === 'Invalid secret key') {
+          toast.error('Невірний секретний ключ');
+        } else {
+          toast.error(data.error);
+        }
+        return;
+      }
 
       toast.success('Звіт підписано та відправлено');
       setSignDialogOpen(false);
