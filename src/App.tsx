@@ -10,6 +10,7 @@ import { RegisterPage } from "@/pages/RegisterPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { PropertiesPage } from "@/pages/PropertiesPage";
 import { PropertyFormPage } from "@/pages/PropertyFormPage";
+import { PropertyEditPage } from "@/pages/PropertyEditPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { NotesPage } from "@/pages/NotesPage";
@@ -119,6 +120,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PropertyFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/properties/:id/edit"
+        element={
+          <ProtectedRoute>
+            <PropertyEditPage />
           </ProtectedRoute>
         }
       />

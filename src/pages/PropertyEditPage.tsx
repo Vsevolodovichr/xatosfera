@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -32,12 +32,14 @@ interface Manager {
   full_name: string;
 }
 
-export const PropertyFormPage = () => {
+export const PropertyEditPage = () => {
   const { t, language } = useLanguage();
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
   
@@ -65,10 +67,59 @@ export const PropertyFormPage = () => {
   const canAssignManager = role === 'superuser' || role === 'top_manager';
 
   useEffect(() => {
+    if (id) {
+      fetchProperty();
+    }
     if (canAssignManager) {
       fetchManagers();
     }
-  }, [canAssignManager]);
+  }, [id, canAssignManager]);
+
+  const fetchProperty = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData({
+          address: data.address || '',
+          owner_name: data.owner_name || '',
+          owner_phone: data.owner_phone || '',
+          description: data.description || '',
+          property_type: data.property_type || 'apartment',
+          deal_type: data.deal_type || 'sale',
+          price: data.price?.toString() || '',
+          external_link: data.external_link || '',
+          photos: data.photos || [],
+          area: data.area?.toString() || '',
+          floor: data.floor?.toString() || '',
+          heating: data.heating || '',
+          rooms: data.rooms?.toString() || '',
+          condition: data.condition || '',
+          documents: data.documents || [],
+          assigned_manager_id: data.assigned_manager_id || '',
+        });
+
+        if (data.documents && data.documents.length > 0) {
+          setDocumentFiles(data.documents.map((url: string) => ({
+            name: url.split('/').pop() || 'document',
+            url,
+          })));
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching property:', error);
+      toast.error('Помилка завантаження об\'єкту');
+      navigate('/properties');
+    } finally {
+      setFetchLoading(false);
+    }
+  };
 
   const fetchManagers = async () => {
     try {
@@ -150,41 +201,53 @@ export const PropertyFormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !id) return;
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('properties').insert({
-        user_id: user.id,
-        address: formData.address,
-        owner_name: formData.owner_name,
-        owner_phone: formData.owner_phone,
-        description: formData.description || null,
-        property_type: formData.property_type as any,
-        deal_type: formData.deal_type as any,
-        price: parseFloat(formData.price),
-        external_link: formData.external_link || null,
-        photos: formData.photos,
-        area: formData.area ? parseFloat(formData.area) : null,
-        floor: formData.floor ? parseInt(formData.floor) : null,
-        heating: formData.heating || null,
-        rooms: formData.rooms ? parseInt(formData.rooms) : null,
-        condition: formData.condition || null,
-        documents: formData.documents,
-        assigned_manager_id: formData.assigned_manager_id || null,
-      });
+      const { error } = await supabase
+        .from('properties')
+        .update({
+          address: formData.address,
+          owner_name: formData.owner_name,
+          owner_phone: formData.owner_phone,
+          description: formData.description || null,
+          property_type: formData.property_type as any,
+          deal_type: formData.deal_type as any,
+          price: parseFloat(formData.price),
+          external_link: formData.external_link || null,
+          photos: formData.photos,
+          area: formData.area ? parseFloat(formData.area) : null,
+          floor: formData.floor ? parseInt(formData.floor) : null,
+          heating: formData.heating || null,
+          rooms: formData.rooms ? parseInt(formData.rooms) : null,
+          condition: formData.condition || null,
+          documents: formData.documents,
+          assigned_manager_id: formData.assigned_manager_id || null,
+        })
+        .eq('id', id);
 
       if (error) throw error;
 
-      toast.success('Об\'єкт успішно додано');
+      toast.success('Об\'єкт успішно оновлено');
       navigate('/properties');
     } catch (error: any) {
-      console.error('Error creating property:', error);
-      toast.error(error.message || 'Помилка створення об\'єкту');
+      console.error('Error updating property:', error);
+      toast.error(error.message || 'Помилка оновлення об\'єкту');
     } finally {
       setLoading(false);
     }
   };
+
+  if (fetchLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -197,9 +260,11 @@ export const PropertyFormPage = () => {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{t('properties.add')}</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {language === 'uk' ? 'Редагувати об\'єкт' : 'Edit Property'}
+            </h1>
             <p className="text-muted-foreground">
-              {language === 'uk' ? 'Заповніть інформацію про об\'єкт' : 'Fill in property information'}
+              {language === 'uk' ? 'Оновіть інформацію про об\'єкт' : 'Update property information'}
             </p>
           </div>
         </div>
