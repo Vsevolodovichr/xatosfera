@@ -110,6 +110,7 @@ export type Database = {
         Row: {
           address: string
           area: number | null
+          assigned_manager_id: string | null
           closing_amount: number | null
           commission: number | null
           condition: string | null
@@ -136,6 +137,7 @@ export type Database = {
         Insert: {
           address: string
           area?: number | null
+          assigned_manager_id?: string | null
           closing_amount?: number | null
           commission?: number | null
           condition?: string | null
@@ -162,6 +164,7 @@ export type Database = {
         Update: {
           address?: string
           area?: number | null
+          assigned_manager_id?: string | null
           closing_amount?: number | null
           commission?: number | null
           condition?: string | null
@@ -185,7 +188,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "properties_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {

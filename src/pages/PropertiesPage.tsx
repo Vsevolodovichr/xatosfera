@@ -25,10 +25,10 @@ import {
   Edit,
   Trash2,
   X,
-  Home,
-  LayoutGrid,
   Ruler,
   DoorOpen,
+  LayoutGrid,
+  User,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +49,6 @@ interface Property {
   property_type: string;
   deal_type: string;
   price: number;
-  status: string;
   photos: string[];
   external_link: string;
   created_at: string;
@@ -58,16 +57,23 @@ interface Property {
   rooms: number | null;
   heating: string | null;
   condition: string | null;
+  user_id: string;
+  assigned_manager_id: string | null;
+}
+
+interface Manager {
+  id: string;
+  full_name: string;
 }
 
 export const PropertiesPage = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
+  const [managers, setManagers] = useState<Record<string, Manager>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [filterDealType, setFilterDealType] = useState('all');
   const [filterPropertyCategory, setFilterPropertyCategory] = useState('all');
   const [priceMin, setPriceMin] = useState('');
@@ -89,6 +95,28 @@ export const PropertiesPage = () => {
 
       if (error) throw error;
       setProperties(data || []);
+
+      // Fetch manager names for all properties
+      const managerIds = new Set<string>();
+      (data || []).forEach((p) => {
+        if (p.user_id) managerIds.add(p.user_id);
+        if (p.assigned_manager_id) managerIds.add(p.assigned_manager_id);
+      });
+
+      if (managerIds.size > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', Array.from(managerIds));
+
+        if (profilesData) {
+          const managersMap: Record<string, Manager> = {};
+          profilesData.forEach((p) => {
+            managersMap[p.id] = p;
+          });
+          setManagers(managersMap);
+        }
+      }
     } catch (error: any) {
       console.error('Error fetching properties:', error);
       toast.error('Помилка завантаження об\'єктів');
@@ -113,27 +141,14 @@ export const PropertiesPage = () => {
   const clearFilters = () => {
     setSearch('');
     setFilterType('all');
-    setFilterStatus('all');
     setFilterDealType('all');
     setFilterPropertyCategory('all');
     setPriceMin('');
     setPriceMax('');
   };
 
-  const hasActiveFilters = search || filterType !== 'all' || filterStatus !== 'all' || 
+  const hasActiveFilters = search || filterType !== 'all' || 
     filterDealType !== 'all' || filterPropertyCategory !== 'all' || priceMin || priceMax;
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { label: string; className: string }> = {
-      available: { label: t('status.available'), className: 'status-available' },
-      sold: { label: t('status.sold'), className: 'status-sold' },
-      rented: { label: t('status.rented'), className: 'status-rented' },
-      not_sold: { label: t('status.notSold'), className: 'bg-muted text-muted-foreground' },
-      not_rented: { label: t('status.notRented'), className: 'bg-muted text-muted-foreground' },
-    };
-    const variant = variants[status] || { label: status, className: '' };
-    return <Badge className={`${variant.className} border`}>{variant.label}</Badge>;
-  };
 
   const getDealTypeBadge = (dealType: string) => {
     return dealType === 'sale' ? (
@@ -149,52 +164,44 @@ export const PropertiesPage = () => {
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
-      // Text search - address, owner name, description
       const searchLower = search.toLowerCase();
       const matchesSearch = !search ||
         property.address.toLowerCase().includes(searchLower) ||
         property.owner_name.toLowerCase().includes(searchLower) ||
         (property.description && property.description.toLowerCase().includes(searchLower));
 
-      // Property type filter
       const matchesType = filterType === 'all' || property.property_type === filterType;
-
-      // Status filter
-      const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
-
-      // Deal type filter
       const matchesDealType = filterDealType === 'all' || property.deal_type === filterDealType;
 
-      // Commercial/residential filter
-      const isCommercial = property.property_type === 'commercial' || property.property_type === 'office';
+      const isCommercial = property.property_type === 'commercial';
       const matchesCategory = filterPropertyCategory === 'all' ||
         (filterPropertyCategory === 'commercial' && isCommercial) ||
         (filterPropertyCategory === 'residential' && !isCommercial);
 
-      // Price range filter
       const matchesPriceMin = !priceMin || property.price >= parseFloat(priceMin);
       const matchesPriceMax = !priceMax || property.price <= parseFloat(priceMax);
 
-      return matchesSearch && matchesType && matchesStatus && matchesDealType && 
+      return matchesSearch && matchesType && matchesDealType && 
         matchesCategory && matchesPriceMin && matchesPriceMax;
     });
-  }, [properties, search, filterType, filterStatus, filterDealType, filterPropertyCategory, priceMin, priceMax]);
+  }, [properties, search, filterType, filterDealType, filterPropertyCategory, priceMin, priceMax]);
 
   const formatPrice = (price: number, dealType: string) => {
     const formatted = new Intl.NumberFormat('uk-UA').format(price);
     return dealType === 'rent' ? `₴${formatted}/міс` : `₴${formatted}`;
   };
 
-  const getHeatingLabel = (heating: string | null) => {
-    if (!heating) return null;
-    const labels: Record<string, string> = {
-      central: language === 'uk' ? 'Центральне' : 'Central',
-      individual: language === 'uk' ? 'Індивідуальне' : 'Individual',
-      gas: language === 'uk' ? 'Газове' : 'Gas',
-      electric: language === 'uk' ? 'Електричне' : 'Electric',
-      none: language === 'uk' ? 'Відсутнє' : 'None',
-    };
-    return labels[heating] || heating;
+  const getManagerName = (property: Property) => {
+    const creatorId = property.user_id;
+    const assignedId = property.assigned_manager_id;
+    
+    if (assignedId && managers[assignedId]) {
+      return managers[assignedId].full_name;
+    }
+    if (creatorId && managers[creatorId]) {
+      return managers[creatorId].full_name;
+    }
+    return language === 'uk' ? 'Невідомий' : 'Unknown';
   };
 
   return (
@@ -241,19 +248,6 @@ export const PropertiesPage = () => {
                     <SelectItem value="rent">{t('deal.rent')}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-full md:w-[150px]">
-                    <SelectValue placeholder={t('properties.status')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('properties.all')}</SelectItem>
-                    <SelectItem value="available">{t('status.available')}</SelectItem>
-                    <SelectItem value="sold">{t('status.sold')}</SelectItem>
-                    <SelectItem value="rented">{t('status.rented')}</SelectItem>
-                    <SelectItem value="not_sold">{t('status.notSold')}</SelectItem>
-                    <SelectItem value="not_rented">{t('status.notRented')}</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Button
                   variant="outline"
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -276,8 +270,6 @@ export const PropertiesPage = () => {
                       <SelectItem value="apartment">{t('property.apartment')}</SelectItem>
                       <SelectItem value="house">{t('property.house')}</SelectItem>
                       <SelectItem value="commercial">{t('property.commercial')}</SelectItem>
-                      <SelectItem value="land">{t('property.land')}</SelectItem>
-                      <SelectItem value="office">{t('property.office')}</SelectItem>
                       <SelectItem value="other">{t('property.other')}</SelectItem>
                     </SelectContent>
                   </Select>
@@ -362,8 +354,12 @@ export const PropertiesPage = () => {
                   <div className="absolute top-3 left-3 flex gap-2">
                     {getDealTypeBadge(property.deal_type)}
                   </div>
-                  <div className="absolute top-3 right-3">
-                    {getStatusBadge(property.status)}
+                  {/* Manager Badge */}
+                  <div className="absolute bottom-3 left-3">
+                    <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {getManagerName(property)}
+                    </Badge>
                   </div>
                 </div>
 
