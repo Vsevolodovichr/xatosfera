@@ -2,8 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Allowed origins for CORS - restrict to production and preview URLs
 const allowedOrigins = [
+  'https://vsevolodovichr.github.io/xatosfera/',
   'https://xatoscrm.lovable.app',
-  'https://id-preview--3e8a3da7-8776-474a-98e6-0b1c05ecb85f.lovable.app',
 ]
 
 function getCorsHeaders(req: Request) {
