@@ -49,7 +49,7 @@ export const PropertyFormPage = () => {
     property_type: 'apartment',
     deal_type: 'sale',
     price: '',
-    external_link: '',
+    property_photo: '',
     photos: [] as string[],
     area: '',
     floor: '',
@@ -163,7 +163,7 @@ export const PropertyFormPage = () => {
         property_type: formData.property_type as any,
         deal_type: formData.deal_type as any,
         price: parseFloat(formData.price),
-        external_link: formData.external_link || null,
+        property_photo: formData.property_photo || null,
         photos: formData.photos,
         area: formData.area ? parseFloat(formData.area) : null,
         floor: formData.floor ? parseInt(formData.floor) : null,
@@ -227,7 +227,7 @@ export const PropertyFormPage = () => {
                     id="owner_name"
                     value={formData.owner_name}
                     onChange={(e) => handleChange('owner_name', e.target.value)}
-                    placeholder="Іваненко Іван Іванович"
+                    placeholder="ПІБ власника"
                     required
                   />
                 </div>
@@ -287,7 +287,7 @@ export const PropertyFormPage = () => {
                     type="number"
                     value={formData.price}
                     onChange={(e) => handleChange('price', e.target.value)}
-                    placeholder="100000"
+                    placeholder="Ціна"
                     required
                   />
                 </div>
@@ -345,7 +345,7 @@ export const PropertyFormPage = () => {
                           step="0.1"
                           value={formData.area}
                           onChange={(e) => handleChange('area', e.target.value)}
-                          placeholder="50"
+                          placeholder="метрів квадратних"
                         />
                       </div>
 
@@ -509,12 +509,12 @@ export const PropertyFormPage = () => {
 
               {/* External Link */}
               <div className="space-y-2">
-                <Label htmlFor="external_link">{t('properties.link')}</Label>
+                <Label htmlFor="property_photo">{t('properties.photo')}</Label>
                 <Input
-                  id="external_link"
-                  value={formData.external_link}
-                  onChange={(e) => handleChange('external_link', e.target.value)}
-                  placeholder="https://www.olx.ua/..."
+                  id="property_photo"
+                  value={formData.property_photo}
+                  onChange={(e) => handleChange('property_photo', e.target.value)}
+                  placeholder="Завантажте фото об'єкта нерухомості"
                 />
               </div>
 

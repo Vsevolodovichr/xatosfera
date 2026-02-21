@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Building2, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { lovable } from '@/integrations/lovable';
+import { supabase } from "@/integrations/supabase/client";
 
 export const LoginPage = () => {
   const { t } = useLanguage();
@@ -24,8 +24,11 @@ export const LoginPage = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
       });
       if (error) {
         toast.error(error.message || t('common.error'));

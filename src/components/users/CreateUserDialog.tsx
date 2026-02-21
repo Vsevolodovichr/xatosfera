@@ -124,7 +124,7 @@ export const CreateUserDialog = ({
               id="fullName"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Іван Петренко"
+              placeholder="Ім'я та прізвище"
             />
           </div>
 
