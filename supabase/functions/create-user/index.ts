@@ -1,157 +1,174 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?bundle'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+// Allowed origins for CORS - restrict to production and preview URLs
+const allowedOrigins = [
+  'https://vsevolodovichr.github.io/xatosfera/',
+]
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || ''
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0]
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  }
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    // Create admin client with service role
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    // Get the calling user's token
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      console.error('No authorization header provided')
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Extract token from header
-    const token = authHeader.replace('Bearer ', '')
-    
-    // Verify the user's token using admin client
-    const { data: { user: callingUser }, error: userError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (userError || !callingUser) {
-      console.error('User verification failed:', userError?.message)
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    // Create a client using the service role key but pass through the
+    // user's auth token so we can determine who is making the request.
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+
+    // Identify requesting user
+    const {
+      data: { user: requestingUser },
+      error: userError,
+    } = await supabaseClient.auth.getUser()
+    if (userError || !requestingUser) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    console.log('Calling user:', callingUser.id, callingUser.email)
+    const { email, password, fullName, role } = await req.json()
 
-    // Check if calling user has permission to create users
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Basic validation
+    if (!email || !password || !fullName || !role) {
+      return new Response(
+        JSON.stringify({ error: 'Missing email, password, fullName or role' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    if (password.length < 6) {
+      return new Response(
+        JSON.stringify({ error: 'Password must be at least 6 characters' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Use plain admin client for database modifications
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+
+    // fetch the role of the requester to enforce permissions
+    const { data: requesterRoleData, error: roleError } = await adminClient
       .from('user_roles')
       .select('role')
-      .eq('user_id', callingUser.id)
+      .eq('user_id', requestingUser.id)
       .maybeSingle()
 
-    if (roleError) {
-      console.error('Role fetch error:', roleError.message)
-    }
-
-    console.log('User role:', roleData?.role)
-
-    if (!roleData || (roleData.role !== 'superuser' && roleData.role !== 'top_manager')) {
-      return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
+    if (roleError || !requesterRoleData) {
+      return new Response(JSON.stringify({ error: 'Unable to determine requester role' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const body = await req.json()
-    const { email, password, fullName, role } = body
-    
-    console.log('Creating user with email:', email, 'role:', role)
+    const requesterRole = requesterRoleData.role as string
 
-    // Validate required fields
-    if (!email || !password || !fullName) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+    // only top managers and superusers are allowed to create users
+    if (!['top_manager', 'superuser'].includes(requesterRole)) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // role the new account will have
+    const allowedCreateRoles = ['manager', 'top_manager']
+    if (!allowedCreateRoles.includes(role)) {
+      return new Response(JSON.stringify({ error: 'Invalid role' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Only superusers can create top_managers
-    if (role === 'top_manager' && roleData.role !== 'superuser') {
-      return new Response(JSON.stringify({ error: 'Only superusers can create top managers' }), {
+    // only superuser may create another top_manager
+    if (role === 'top_manager' && requesterRole !== 'superuser') {
+      return new Response(JSON.stringify({ error: 'Insufficient privileges to create top manager' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Create user with admin API (doesn't affect current session)
-    // The handle_new_user trigger will create profile and role automatically
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    // create the auth user using the service key
+    const { data: createData, error: createUserError } = await adminClient.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirm email for admin-created users
-      user_metadata: { full_name: fullName }
+      user_metadata: { full_name: fullName },
     })
 
-    if (createError) {
-      console.error('Create user error:', createError.message, createError)
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    if (createUserError) {
+      return new Response(JSON.stringify({ error: createUserError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    console.log('User created:', newUser.user?.id)
+    const newUserId = createData.user?.id || (createData as any).id
 
-    // Update role if not manager (manager is default from trigger)
-    if (role && role !== 'manager' && newUser.user) {
-      const { error: roleUpdateError } = await supabaseAdmin
-        .from('user_roles')
-        .update({ role })
-        .eq('user_id', newUser.user.id)
-      
-      if (roleUpdateError) {
-        console.error('Role update error:', roleUpdateError.message)
-      }
+    // insert profile record (approved defaults to null/false)
+    const { error: profileInsertError } = await adminClient
+      .from('profiles')
+      .insert({ id: newUserId, full_name: fullName })
+
+    if (profileInsertError) {
+      return new Response(JSON.stringify({ error: 'Failed to create profile' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    // Auto-approve the user (trigger sets approved=false for non-first users)
-    if (newUser.user) {
-      const { error: approveError } = await supabaseAdmin
-        .from('profiles')
-        .update({ 
-          approved: true, 
-          approved_at: new Date().toISOString(),
-          approved_by: callingUser.id 
-        })
-        .eq('id', newUser.user.id)
-      
-      if (approveError) {
-        console.error('Approve error:', approveError.message)
-      }
+    // insert role
+    const { error: roleInsertError } = await adminClient
+      .from('user_roles')
+      .insert({ user_id: newUserId, role })
+
+    if (roleInsertError) {
+      return new Response(JSON.stringify({ error: 'Failed to assign role' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    console.log('User setup complete')
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      user: { id: newUser.user?.id, email: newUser.user?.email } 
-    }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
-
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Unexpected error:', message)
-    return new Response(JSON.stringify({ error: message }), {
+  } catch (error) {
+    const corsHeaders = getCorsHeaders(req)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })
