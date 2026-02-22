@@ -7,6 +7,7 @@ interface Profile {
   id: string;
   full_name: string;
   created_at: string;
+  role?: UserRole;
   phone?: string;
   avatar_url?: string;
   approved?: boolean;
@@ -37,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Завантажуємо профіль з колекції 'users' (non-sensitive поля)
       const profileData = await pb.collection('users').getOne(userId, {
-        fields: 'id, full_name, created, phone, avatar_url, approved, approved_at, approved_by, updated',
+        fields: 'id, full_name, role, created, phone, avatar_url, approved, approved_at, approved_by, updated',
       });
 
       if (profileData) {
@@ -47,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: profileData.created,
           phone: profileData.phone,
           avatar_url: profileData.avatar_url,
+          role: profileData.role,
           approved: profileData.approved,
           approved_at: profileData.approved_at,
         });

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Building2, Mail, Lock, Eye, EyeOff, Loader2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { lovable } from '@/integrations/lovable';
+import pb from '@/integrations/pocketbase/client';
 
 export const RegisterPage = () => {
   const { t } = useLanguage();
@@ -26,8 +26,11 @@ export const RegisterPage = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+      const { error } = await pb.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
       });
       if (error) {
         toast.error(error.message || t('common.error'));
