@@ -12,14 +12,22 @@ const allowedOrigins = [
 ]
 
 function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') || ''
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0]
-  
+  const origin = req.headers.get('Origin') || '';
+
+  console.log('Received Origin header:', origin);  // ← додайте для дебагу в логах Supabase
+
+  const isAllowed = allowedOrigins.includes(origin);
+
+  // Якщо origin дозволено — повертаємо його точно як є
+  // Якщо ні — повертаємо null (браузер заблокує) або '*' для тесту
+  const corsOrigin = isAllowed ? origin : null;
+
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Origin': corsOrigin || allowedOrigins[0],  // fallback на перший дозволений
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  }
+    'Access-Control-Allow-Credentials': 'true',  // додайте, якщо використовуєте credentials: 'include'
+  };
 }
 
 Deno.serve(async (req) => {
