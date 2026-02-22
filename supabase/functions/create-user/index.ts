@@ -66,6 +66,18 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email format' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
     if (password.length < 6) {
       return new Response(
         JSON.stringify({ error: 'Password must be at least 6 characters' }),
@@ -120,21 +132,34 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Check if email already exists (optional, but prevents duplicate errors)
+    const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers()
+    if (listError) {
+      console.error('Error listing users:', listError)
+    } else if (existingUsers.users.some(u => u.email === email)) {
+      return new Response(JSON.stringify({ error: 'Email already exists' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // create the auth user using the service key
     const { data: createData, error: createUserError } = await adminClient.auth.admin.createUser({
       email,
       password,
+      email_confirm: true,  // Auto-confirm email (remove if confirmation email is needed)
       user_metadata: { full_name: fullName },
     })
 
     if (createUserError) {
+      console.error('Create user error:', createUserError)  // Log for debugging
       return new Response(JSON.stringify({ error: createUserError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const newUserId = createData.user?.id || (createData as any).id
+    const newUserId = createData.user.id  // Use standard path
 
     // insert profile record (approved defaults to null/false)
     const { error: profileInsertError } = await adminClient
@@ -142,7 +167,8 @@ Deno.serve(async (req) => {
       .insert({ id: newUserId, full_name: fullName })
 
     if (profileInsertError) {
-      return new Response(JSON.stringify({ error: 'Failed to create profile' }), {
+      console.error('Profile insert error:', profileInsertError)  // Log for debugging
+      return new Response(JSON.stringify({ error: 'Failed to create profile: ' + profileInsertError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -154,19 +180,20 @@ Deno.serve(async (req) => {
       .insert({ user_id: newUserId, role })
 
     if (roleInsertError) {
-      return new Response(JSON.stringify({ error: 'Failed to assign role' }), {
+      console.error('Role insert error:', roleInsertError)  // Log for debugging
+      return new Response(JSON.stringify({ error: 'Failed to assign role: ' + roleInsertError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, userId: newUserId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
-    const corsHeaders = getCorsHeaders(req)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('Server error:', error)  // Log for debugging
+    return new Response(JSON.stringify({ error: 'Internal server error: ' + (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
