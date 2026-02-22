@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Building2, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { supabase } from "@/integrations/supabase/client";
+import pb from "@/integrations/pocketbase/client";
 
 export const LoginPage = () => {
   const { t } = useLanguage();
@@ -24,7 +24,7 @@ export const LoginPage = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await pb.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,

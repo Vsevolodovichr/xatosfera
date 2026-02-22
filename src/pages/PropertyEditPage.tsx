@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/accordion';
 import { ArrowLeft, Loader2, Upload, FileText, Trash2, User } from 'lucide-react';
 import { validateFile, generateSafeFilename } from '@/lib/file-validation';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -77,7 +77,7 @@ export const PropertyEditPage = () => {
 
   const fetchProperty = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await pb
         .from('properties')
         .select('*')
         .eq('id', id)
@@ -123,7 +123,7 @@ export const PropertyEditPage = () => {
 
   const fetchManagers = async () => {
     try {
-      const { data } = await supabase
+      const { data } = await pb
         .from('profiles')
         .select('id, full_name')
         .order('full_name');
@@ -158,7 +158,7 @@ export const PropertyEditPage = () => {
 
         const safeFileName = generateSafeFilename(user.id, file.name);
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await pb.storage
           .from('property-documents')
           .upload(safeFileName, file);
 
@@ -187,7 +187,7 @@ export const PropertyEditPage = () => {
     const doc = documentFiles[index];
     try {
       const filePath = doc.url.split('/').slice(-2).join('/');
-      await supabase.storage.from('property-documents').remove([filePath]);
+      await pb.storage.from('property-documents').remove([filePath]);
 
       setDocumentFiles((prev) => prev.filter((_, i) => i !== index));
       setFormData((prev) => ({
@@ -205,7 +205,7 @@ export const PropertyEditPage = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await pb
         .from('properties')
         .update({
           address: formData.address,

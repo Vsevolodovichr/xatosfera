@@ -21,7 +21,7 @@ import {
   Trash2,
   MoreVertical,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -59,7 +59,7 @@ export const NotesPage = () => {
 
   const fetchNotes = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await pb
         .from('user_notes')
         .select('*')
         .order('updated_at', { ascending: false });
@@ -82,7 +82,7 @@ export const NotesPage = () => {
 
     try {
       if (editingNote) {
-        const { error } = await supabase
+        const { error } = await pb
           .from('user_notes')
           .update({ title, content })
           .eq('id', editingNote.id);
@@ -90,7 +90,7 @@ export const NotesPage = () => {
         if (error) throw error;
         toast.success('Нотатку оновлено');
       } else {
-        const { error } = await supabase
+        const { error } = await pb
           .from('user_notes')
           .insert({ user_id: user.id, title, content });
 
@@ -113,7 +113,7 @@ export const NotesPage = () => {
     if (!confirm('Видалити цю нотатку?')) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await pb
         .from('user_notes')
         .delete()
         .eq('id', id);

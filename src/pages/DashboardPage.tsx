@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client';
 import {
   Tabs,
   TabsContent,
@@ -41,7 +41,7 @@ export const DashboardPage = () => {
 
   const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await pb
         .from('properties')
         .select('status, commission');
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client'; // Імпорт PocketBase клієнта
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -55,46 +55,31 @@ export const CreateUserDialog = ({
     setLoading(true);
 
     try {
-      // Get current session for authorization
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      // Call edge function to create user (doesn't affect current session)
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionData.session?.access_token}`,
-          },
-          body: JSON.stringify({
-            email,
-            password,
-            fullName,
-            role,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Помилка створення користувача');
-      }
+      // Створюємо нового користувача в колекції 'users'
+      await pb.collection('users').create({
+        email,
+        password,
+        passwordConfirm: password, // PocketBase вимагає підтвердження пароля при створенні
+        full_name: fullName,
+        role, // роль записується безпосередньо в поле role
+        // approved: false, // за замовчуванням false, можна залишити або явно вказати
+      });
 
       toast.success('Користувача створено успішно!');
-      
-      // Reset form
+
+      // Скидаємо форму
       setEmail('');
       setPassword('');
       setFullName('');
       setRole('manager');
-      
+
       onOpenChange(false);
-      onUserCreated();
+      onUserCreated(); // оновлюємо список користувачів на сторінці
     } catch (error: any) {
       console.error('Error creating user:', error);
-      toast.error(error.message || 'Помилка створення користувача');
+      // Обробка типових помилок PocketBase
+      const errMsg = error?.data?.message || error?.message || 'Помилка створення користувача';
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -114,7 +99,7 @@ export const CreateUserDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Full Name */}
+          {/* Повне ім'я */}
           <div className="space-y-2">
             <Label htmlFor="fullName" className="flex items-center gap-2">
               <User className="w-4 h-4" />
@@ -143,7 +128,7 @@ export const CreateUserDialog = ({
             />
           </div>
 
-          {/* Password */}
+          {/* Пароль */}
           <div className="space-y-2">
             <Label htmlFor="password" className="flex items-center gap-2">
               <Lock className="w-4 h-4" />
@@ -158,7 +143,7 @@ export const CreateUserDialog = ({
             />
           </div>
 
-          {/* Role */}
+          {/* Роль */}
           <div className="space-y-2">
             <Label>{t('users.role')}</Label>
             <Select value={role} onValueChange={setRole}>

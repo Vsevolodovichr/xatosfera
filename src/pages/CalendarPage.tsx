@@ -31,7 +31,7 @@ import {
   Edit,
   Trash2,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client';
 import { toast } from 'sonner';
 import { format, isSameDay } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -90,7 +90,7 @@ export const CalendarPage = () => {
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await pb
         .from('calendar_events')
         .select('*')
         .order('start_time', { ascending: true });
@@ -117,7 +117,7 @@ export const CalendarPage = () => {
 
     try {
       if (editingEvent) {
-        const { error } = await supabase
+        const { error } = await pb
           .from('calendar_events')
           .update({
             title,
@@ -132,7 +132,7 @@ export const CalendarPage = () => {
         if (error) throw error;
         toast.success('Подію оновлено');
       } else {
-        const { error } = await supabase
+        const { error } = await pb
           .from('calendar_events')
           .insert({
             user_id: user.id,
@@ -161,7 +161,7 @@ export const CalendarPage = () => {
     if (!confirm('Видалити цю подію?')) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await pb
         .from('calendar_events')
         .delete()
         .eq('id', id);

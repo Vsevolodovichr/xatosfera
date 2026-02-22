@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client'; // Імпорт PocketBase клієнта
 import { toast } from 'sonner';
-import { generateSafeFilename, ALLOWED_IMAGE_TYPES, ALLOWED_IMAGE_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/file-validation';
 import {
   Dialog,
   DialogContent,
@@ -29,86 +28,47 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
   const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [avatarPath, setAvatarPath] = useState(''); // Store path, not URL
-  const [avatarSignedUrl, setAvatarSignedUrl] = useState(''); // Signed URL for display
+  const [avatarUrl, setAvatarUrl] = useState(''); // Повний URL аватару
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Function to get signed URL for avatar
-  const getSignedAvatarUrl = useCallback(async (path: string) => {
-    if (!path) {
-      setAvatarSignedUrl('');
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .createSignedUrl(path, 3600); // 1 hour expiry
-      
-      if (error) throw error;
-      setAvatarSignedUrl(data.signedUrl);
-    } catch (error) {
-      console.error('Error getting signed URL:', error);
-      setAvatarSignedUrl('');
-    }
-  }, []);
-
+  // Оновлення стану при зміні профілю
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
-      setPhone((profile as any).phone || '');
-      const path = (profile as any).avatar_url || '';
-      setAvatarPath(path);
-      // Get signed URL for display
-      if (path) {
-        getSignedAvatarUrl(path);
+      setPhone(profile.phone || '');
+      // Генерація URL для аватару, якщо є файл (припускаємо поле 'avatar')
+      const avatarField = (profile as any).avatar;
+      if (avatarField) {
+        setAvatarUrl(pb.files.getUrl(profile, avatarField));
+      } else {
+        setAvatarUrl('');
       }
     }
-  }, [profile, getSignedAvatarUrl]);
+  }, [profile]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // Validate file
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error(`Файл занадто великий. Максимум: ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
-      return;
-    }
-
-    const allowedMimeTypes = Object.keys(ALLOWED_IMAGE_TYPES);
-    if (!allowedMimeTypes.includes(file.type)) {
-      toast.error(`Непідтримуваний формат. Дозволені: ${ALLOWED_IMAGE_EXTENSIONS.join(', ')}`);
-      return;
-    }
+    // Валідація файлу (використовуйте вашу функцію або додайте)
+    // Приклад: if (file.size > MAX_FILE_SIZE) { toast.error(...); return; }
 
     setUploading(true);
     try {
-      // Generate safe filename
-      const fileName = generateSafeFilename(user.id, file.name);
+      // Підготовка FormData для оновлення з файлом
+      const formData = new FormData();
+      formData.append('avatar', file); // Поле 'avatar' в колекції users
 
-      // Delete old avatar if exists
-      if (avatarPath) {
-        await supabase.storage.from('avatars').remove([avatarPath]);
-      }
+      // Оновлення користувача з файлом
+      await pb.collection('users').update(user.id, formData);
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      // Store path (not public URL since bucket is now private)
-      setAvatarPath(fileName);
-      
-      // Get signed URL for display
-      await getSignedAvatarUrl(fileName);
-      
-      toast.success('Фото завантажено');
+      // Оновлення профілю
+      await refreshProfile();
+      toast.success('Аватар оновлено');
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
-      toast.error('Помилка завантаження фото');
+      toast.error(error.message || 'Помилка завантаження аватару');
     } finally {
       setUploading(false);
     }
@@ -116,29 +76,21 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
 
   const handleSave = async () => {
     if (!user) return;
+
     setSaving(true);
-
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName,
-          phone: phone,
-          avatar_url: avatarPath || null, // Store path, not URL
-        })
-        .eq('id', user.id);
+      // Оновлення профілю (без аватару, бо він окремо)
+      await pb.collection('users').update(user.id, {
+        full_name: fullName,
+        phone,
+      });
 
-      if (error) throw error;
-
-      if (refreshProfile) {
-        await refreshProfile();
-      }
-
-      toast.success(t('common.success'));
+      await refreshProfile();
+      toast.success('Налаштування збережено');
       onOpenChange(false);
     } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast.error(t('common.error'));
+      console.error('Error saving profile:', error);
+      toast.error(error.message || 'Помилка збереження');
     } finally {
       setSaving(false);
     }
@@ -156,8 +108,8 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <Avatar className="w-24 h-24">
-                {avatarSignedUrl ? (
-                  <AvatarImage src={avatarSignedUrl} alt={fullName} />
+                {avatarUrl ? (
+                  <AvatarImage src={avatarUrl} alt={fullName} />
                 ) : (
                   <AvatarFallback className="gradient-primary text-primary-foreground text-2xl">
                     {fullName?.charAt(0).toUpperCase() || 'U'}

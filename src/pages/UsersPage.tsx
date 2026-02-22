@@ -28,7 +28,7 @@ import {
   Clock,
   UserCheck,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client'; // Імпорт PocketBase клієнта
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -51,7 +51,6 @@ interface UserWithRole {
   id: string;
   full_name: string;
   email: string;
-  has_secret_key: boolean; // Only store presence, never the actual key
   created_at: string;
   role: string;
   approved: boolean;
@@ -77,34 +76,21 @@ export const UsersPage = () => {
     if (!user) return;
 
     try {
-      // SECURITY: Explicitly select columns, excluding secret_key to prevent exposure
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, created_at, phone, avatar_url, approved, approved_at, approved_by, updated_at');
+      // Отримання всіх користувачів з колекції 'users' (вибірка полів для безпеки)
+      const userRecords = await pb.collection('users').getFullList({
+        sort: '-created',
+        fields: 'id, full_name, email, created, role, approved, approved_at, approved_by, phone, avatar_url',
+      });
 
-      if (profilesError) throw profilesError;
-
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      // SECURITY: Check for secret_key presence server-side only via RPC if needed
-      // For now, we simply don't expose this information to the client
-      const combined = profiles?.map((profile) => {
-        const userRole = roles?.find((r) => r.user_id === profile.id);
-        return {
-          id: profile.id,
-          full_name: profile.full_name,
-          email: '',
-          has_secret_key: false, // This info is no longer sent to client for security
-          created_at: profile.created_at,
-          role: userRole?.role || 'manager',
-          approved: profile.approved ?? false,
-          approved_at: profile.approved_at,
-        };
-      }) || [];
+      const combined = userRecords.map((record) => ({
+        id: record.id,
+        full_name: record.full_name,
+        email: record.email,
+        created_at: record.created,
+        role: record.role || 'manager',
+        approved: record.approved ?? false,
+        approved_at: record.approved_at,
+      }));
 
       setUsers(combined);
     } catch (error: any) {
@@ -117,16 +103,11 @@ export const UsersPage = () => {
 
   const handleApproveUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          approved: true,
-          approved_by: user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (error) throw error;
+      await pb.collection('users').update(userId, {
+        approved: true,
+        approved_by: user?.id,
+        approved_at: new Date().toISOString(),
+      });
 
       toast.success('Користувача підтверджено');
       fetchUsers();
@@ -145,12 +126,7 @@ export const UsersPage = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ role: newRole as any })
-        .eq('user_id', selectedUser.id);
-
-      if (error) throw error;
+      await pb.collection('users').update(selectedUser.id, { role: newRole });
 
       toast.success('Роль оновлено');
       setEditDialogOpen(false);
@@ -166,9 +142,7 @@ export const UsersPage = () => {
     if (!confirm('Ви впевнені, що хочете видалити цього користувача?')) return;
 
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
-
-      if (error) throw error;
+      await pb.collection('users').delete(userId);
 
       toast.success('Користувача видалено');
       fetchUsers();
@@ -178,56 +152,37 @@ export const UsersPage = () => {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const variants: Record<string, { label: string; className: string }> = {
-      superuser: {
-        label: t('users.superuser'),
-        className: 'bg-destructive/10 text-destructive border-destructive/20',
-      },
-      top_manager: {
-        label: t('users.topManager'),
-        className: 'bg-primary/10 text-primary border-primary/20',
-      },
-      manager: {
-        label: t('users.manager'),
-        className: 'bg-info/10 text-info border-info/20',
-      },
-    };
-    const variant = variants[role] || { label: role, className: '' };
-    return (
-      <Badge className={`${variant.className} border`}>
-        {variant.label}
-      </Badge>
-    );
-  };
-
-  const filteredUsers = users.filter((u) =>
-    u.full_name.toLowerCase().includes(search.toLowerCase())
-  );
-
   const canEditUser = (userRole: string) => {
     if (currentUserRole === 'superuser') return true;
-    if (currentUserRole === 'top_manager' && userRole === 'manager') return true;
+    if (currentUserRole === 'top_manager') return userRole === 'manager';
     return false;
   };
 
-  const canCreateUser = currentUserRole === 'superuser' || currentUserRole === 'top_manager';
+  const filteredUsers = users.filter((u) =>
+    u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <AppLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('users.title')}</h1>
-            <p className="text-muted-foreground mt-1">
-              {language === 'uk' ? 'Управління користувачами системи' : 'System user management'}
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center">
+              <Users className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{t('users.title')}</h1>
+              <p className="text-muted-foreground">
+                {language === 'uk' ? 'Керування користувачами системи' : 'Manage system users'}
+              </p>
+            </div>
           </div>
-          {canCreateUser && (
+          {hasPermission('manage_users') && (
             <Button
               onClick={() => setCreateDialogOpen(true)}
-              className="gradient-primary shadow-accent"
+              className="gradient-primary text-primary-foreground"
             >
               <Plus className="mr-2 h-4 w-4" />
               {t('users.add')}
@@ -239,12 +194,12 @@ export const UsersPage = () => {
         <Card className="shadow-card border-0">
           <CardContent className="p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={language === 'uk' ? 'Пошук користувачів' : 'Search users'}
+                placeholder={language === 'uk' ? 'Пошук користувачів...' : 'Search users...'}
+                className="pl-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
               />
             </div>
           </CardContent>
@@ -252,116 +207,107 @@ export const UsersPage = () => {
 
         {/* Users List */}
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="shadow-card border-0 animate-pulse">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-muted" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-1/4" />
-                      <div className="h-3 bg-muted rounded w-1/3" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
         ) : filteredUsers.length > 0 ? (
-          <div className="space-y-4">
-            {filteredUsers.map((userItem, index) => (
-              <Card
-                key={userItem.id}
-                className="shadow-card border-0 hover:shadow-lg transition-all animate-slide-up"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                    {/* Avatar & Name */}
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-lg font-semibold text-primary-foreground">
-                        {userItem.full_name?.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-foreground">
-                          {userItem.full_name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {getRoleBadge(userItem.role)}
-                          {userItem.approved ? (
-                            <Badge className="bg-success/10 text-success border-success/20 border">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              {language === 'uk' ? 'Підтверджено' : 'Approved'}
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-warning/10 text-warning border-warning/20 border">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {language === 'uk' ? 'Очікує' : 'Pending'}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Details */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          {format(new Date(userItem.created_at), 'd MMM yyyy', {
-                            locale: language === 'uk' ? uk : undefined,
-                          })}
-                        </span>
-                      </div>
-                      {/* Secret key status removed for security - keys are handled server-side only */}
-                    </div>
-
-                    {/* Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredUsers.map((userItem) => (
+              <Card key={userItem.id} className="shadow-card border-0 overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {/* Approve button for pending users */}
-                      {!userItem.approved && canEditUser(userItem.role) && userItem.id !== user?.id && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleApproveUser(userItem.id)}
-                          className="text-success border-success/30 hover:bg-success/10"
-                        >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          {language === 'uk' ? 'Підтвердити' : 'Approve'}
-                        </Button>
-                      )}
-                      
-                      {canEditUser(userItem.role) && userItem.id !== user?.id && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedUser(userItem);
-                                setNewRole(userItem.role);
-                                setEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              {language === 'uk' ? 'Змінити роль' : 'Change role'}
-                            </DropdownMenuItem>
-                            {currentUserRole === 'superuser' && (
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteUser(userItem.id)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t('users.delete')}
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <Badge variant={userItem.approved ? 'default' : 'secondary'}>
+                        {userItem.approved
+                          ? language === 'uk' ? 'Підтверджено' : 'Approved'
+                          : language === 'uk' ? 'Очікує' : 'Pending'}
+                      </Badge>
                     </div>
+                    <Badge
+                      variant={
+                        userItem.role === 'superuser'
+                          ? 'destructive'
+                          : userItem.role === 'top_manager'
+                          ? 'secondary'
+                          : 'default'
+                      }
+                    >
+                      {t(`users.${userItem.role}`)}
+                    </Badge>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-foreground">{userItem.full_name}</h3>
+                      <p className="text-sm text-muted-foreground">{userItem.email}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      {format(new Date(userItem.created_at), 'dd MMMM yyyy', {
+                        locale: language === 'uk' ? uk : undefined,
+                      })}
+                    </div>
+
+                    {userItem.approved_at && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CheckCircle className="h-4 w-4 text-success" />
+                        {language === 'uk' ? 'Підтверджено' : 'Approved'}{' '}
+                        {format(new Date(userItem.approved_at), 'dd.MM.yyyy HH:mm')}
+                      </div>
+                    )}
+
+                    {!userItem.approved && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4 text-warning" />
+                        {language === 'uk' ? 'Очікує підтвердження' : 'Pending approval'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="p-4 border-t flex justify-end">
+                    {canEditUser(userItem.role) && userItem.id !== user?.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(userItem);
+                              setNewRole(userItem.role);
+                              setEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            {language === 'uk' ? 'Змінити роль' : 'Change role'}
+                          </DropdownMenuItem>
+                          {currentUserRole === 'superuser' && (
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteUser(userItem.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {t('users.delete')}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {!userItem.approved && canEditUser(userItem.role) && userItem.id !== user?.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleApproveUser(userItem.id)}
+                        className="text-success border-success/30 hover:bg-success/10 ml-2"
+                      >
+                        <UserCheck className="w-4 h-4 mr-1" />
+                        {language === 'uk' ? 'Підтвердити' : 'Approve'}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

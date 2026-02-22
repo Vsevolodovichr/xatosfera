@@ -31,7 +31,7 @@ import {
   Building2,
   Handshake,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client';
 import { toast } from 'sonner';
 import { validateFile, generateSafeFilename, ALLOWED_DOCUMENT_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/file-validation';
 
@@ -47,10 +47,10 @@ interface Document {
 // Helper to get signed URL for secure document access
 const getSignedDocumentUrl = async (filePath: string): Promise<string | null> => {
   try {
-    const { data, error } = await supabase.storage
+    const { data, error } = await pb.storage
       .from('documents')
       .createSignedUrl(filePath, 3600); // 1 hour expiry
-    
+
     if (error) {
       console.error('Error creating signed URL:', error);
       return null;
@@ -91,7 +91,7 @@ export const DocumentsPage = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await pb
         .from('user_documents')
         .select('*')
         .order('created_at', { ascending: false });
@@ -131,14 +131,14 @@ export const DocumentsPage = () => {
       // Use safe filename generation to prevent path injection
       const fileName = generateSafeFilename(user.id, newDocument.file.name);
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await pb.storage
         .from('documents')
         .upload(fileName, newDocument.file);
 
       if (uploadError) throw uploadError;
 
       // Store the file path (not public URL) for secure access via signed URLs
-      const { error: dbError } = await supabase.from('user_documents').insert({
+      const { error: dbError } = await pb.from('user_documents').insert({
         user_id: user.id,
         title: newDocument.title,
         category: newDocument.category,
@@ -165,9 +165,9 @@ export const DocumentsPage = () => {
 
     try {
       const filePath = doc.file_url.split('/').slice(-2).join('/');
-      await supabase.storage.from('documents').remove([filePath]);
+      await pb.storage.from('documents').remove([filePath]);
 
-      const { error } = await supabase.from('user_documents').delete().eq('id', doc.id);
+      const { error } = await pb.from('user_documents').delete().eq('id', doc.id);
       if (error) throw error;
 
       toast.success('Документ видалено');

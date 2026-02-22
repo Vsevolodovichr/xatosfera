@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { User, Session } from '@supabase/supabase-js';
+import pb from '@/integrations/pocketbase/client'; // Імпорт нового клієнта
 
 export type UserRole = 'superuser' | 'top_manager' | 'manager';
 
@@ -15,8 +14,7 @@ interface Profile {
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: any | null; // PocketBase Record (замість Supabase User)
   profile: Profile | null;
   role: UserRole | null;
   loading: boolean;
@@ -30,33 +28,29 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Only select non-sensitive fields - secret_key is never sent to client
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id, full_name, created_at, phone, avatar_url, approved, approved_at, approved_by, updated_at')
-        .eq('id', userId)
-        .maybeSingle();
+      // Завантажуємо профіль з колекції 'users' (non-sensitive поля)
+      const profileData = await pb.collection('users').getOne(userId, {
+        fields: 'id, full_name, created, phone, avatar_url, approved, approved_at, approved_by, updated',
+      });
 
       if (profileData) {
-        setProfile(profileData);
-      }
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (roleData) {
-        setRole(roleData.role as UserRole);
+        setProfile({
+          id: profileData.id,
+          full_name: profileData.full_name,
+          created_at: profileData.created,
+          phone: profileData.phone,
+          avatar_url: profileData.avatar_url,
+          approved: profileData.approved,
+          approved_at: profileData.approved_at,
+        });
+        setRole(profileData.role as UserRole); // Припускаємо поле 'role' в users
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -64,53 +58,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    // Слухаємо зміни автентифікації (callback без параметрів)
+    const unsubscribe = pb.authStore.onChange(async () => {
+      setUser(pb.authStore.model);
 
-        if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
-        } else {
-          setProfile(null);
-          setRole(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
+      if (pb.authStore.model) {
+        await fetchProfile(pb.authStore.model.id);
+      } else {
+        setProfile(null);
+        setRole(null);
       }
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Ініціальна перевірка
+    if (pb.authStore.isValid && pb.authStore.model) {
+      setUser(pb.authStore.model);
+      fetchProfile(pb.authStore.model.id);
+    }
+    setLoading(false);
+
+    return () => unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    try {
+      await pb.collection('users').authWithPassword(email, password);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: fullName },
-      },
-    });
-    if (error) throw error;
+    try {
+      // Створюємо користувача (role за замовчуванням 'manager' або налаштуйте в PocketBase)
+      await pb.collection('users').create({
+        email,
+        password,
+        passwordConfirm: password,
+        full_name: fullName,
+      });
+      // Автоматичний логін після реєстрації (опціонально)
+      await signIn(email, password);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    pb.authStore.clear();
   };
 
   const hasPermission = (action: string): boolean => {
@@ -142,7 +138,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{
       user,
-      session,
       profile,
       role,
       loading,

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import pb from '@/integrations/pocketbase/client'; // Для генерації URL аватару
 
 const navItems = [
   { key: 'dashboard', icon: LayoutDashboard, path: '/dashboard', permission: null },
@@ -62,6 +63,9 @@ export const AppSidebar = () => {
     (item) => !item.permission || hasPermission(item.permission)
   );
 
+  // Генерація URL для аватару (якщо є файл)
+  const avatarUrl = profile?.avatar_url ? pb.files.getUrl(profile, profile.avatar_url) : '';
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -86,9 +90,8 @@ export const AppSidebar = () => {
             <Link
               key={item.key}
               to={item.path}
-              onClick={() => setMobileOpen(false)}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group',
+                'group flex items-center gap-4 px-4 py-3 rounded-lg transition-all hover:shadow-sm',
                 isActive
                   ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-accent'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
@@ -116,8 +119,8 @@ export const AppSidebar = () => {
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-left"
           >
             <Avatar className="w-9 h-9">
-              {(profile as any).avatar_url ? (
-                <AvatarImage src={(profile as any).avatar_url} alt={profile.full_name} />
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt={profile.full_name} />
               ) : (
                 <AvatarFallback className="gradient-primary text-primary-foreground text-sm font-semibold">
                   {profile.full_name?.charAt(0).toUpperCase() || 'U'}

@@ -22,7 +22,7 @@ import {
   Send,
   Key,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import pb from '@/integrations/pocketbase/client';
 import { toast } from 'sonner';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -71,7 +71,7 @@ export const ReportsPage = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await pb
         .from('reports')
         .select('*')
         .order('created_at', { ascending: false });
@@ -91,14 +91,14 @@ export const ReportsPage = () => {
 
     try {
       // Fetch properties added in this period
-      const { data: addedProperties } = await supabase
+      const { data: addedProperties } = await pb
         .from('properties')
         .select('id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodEnd.toISOString());
 
       // Fetch closed cases (properties with status sold/rented and updated in period)
-      const { data: closedCases } = await supabase
+      const { data: closedCases } = await pb
         .from('properties')
         .select('closing_amount, commission')
         .in('status', ['sold', 'rented'])
@@ -136,7 +136,7 @@ export const ReportsPage = () => {
 
       const { added, closed, amount, commission } = await calculateReportData(periodStart, periodEnd);
 
-      const { error } = await supabase.from('reports').insert({
+      const { error } = await pb.from('reports').insert({
         user_id: user.id,
         report_type: reportType,
         period_start: format(periodStart, 'yyyy-MM-dd'),
@@ -164,7 +164,7 @@ export const ReportsPage = () => {
 
     try {
       // Call edge function to validate secret key and sign report server-side
-      const { data, error } = await supabase.functions.invoke('sign-report', {
+      const { data, error } = await pb.functions.invoke('sign-report', {
         body: {
           reportId: selectedReport.id,
           secretKey: secretKey,
