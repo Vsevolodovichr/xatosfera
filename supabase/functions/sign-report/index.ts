@@ -7,7 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?bundle'
 
 // Allowed origins for CORS - restrict to production and preview URLs
 const allowedOrigins = [
-  'xatosfera.pages.dev',
+  'xatosfera.pages.dev/',
   
 ]
 
