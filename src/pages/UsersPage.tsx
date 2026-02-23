@@ -82,7 +82,7 @@ export const UsersPage = () => {
         fields: 'id, full_name, email, created, role, approved, approved_at, approved_by, phone, avatar_url',
       });
 
-      const combined = userRecords.map((record) => ({
+      const combined = userRecords.map((record: any) => ({
         id: record.id,
         full_name: record.full_name,
         email: record.email,

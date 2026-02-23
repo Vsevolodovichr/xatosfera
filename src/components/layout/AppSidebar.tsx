@@ -90,7 +90,20 @@ export const AppSidebar = () => {
               </div>
             </div>
           </div>
-
+{profile && (
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-left"
+              >
+                <Avatar className="w-9 h-9">
+                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={profile.full_name} /> : <AvatarFallback>{profile.full_name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
+                  <p className="text-xs text-sidebar-foreground/60">{getRoleLabel()}</p>
+                </div>
+              </button>
+            )}
           <nav className="flex-1 p-4 space-y-1">
             {filteredItems.map((item) => {
               const Icon = item.icon;
@@ -115,21 +128,8 @@ export const AppSidebar = () => {
 
           <div className="p-4 border-t border-sidebar-border space-y-4">
             <LanguageToggle />
-            {profile && (
-              <button
-                onClick={() => setProfileOpen(true)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-left"
-              >
-                <Avatar className="w-9 h-9">
-                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={profile.full_name} /> : <AvatarFallback>{profile.full_name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-                  <p className="text-xs text-sidebar-foreground/60">{getRoleLabel()}</p>
-                </div>
-              </button>
-            )}
-            <Button variant="ghost" className="w-full justify-start gap-3" onClick={signOut}>
+            
+            <Button className="w-full justify-start gap-3" onClick={signOut}>
               <LogOut className="h-5 w-5" />
               {t('nav.logout')}
             </Button>
