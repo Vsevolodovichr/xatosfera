@@ -92,7 +92,7 @@ export const LoginPage = () => {
             </div>
             <div className="text-center p-4 rounded-xl bg-white/5 backdrop-blur">
               <div className="text-3xl font-bold text-accent">₴2M+</div>
-              <div className="text-sm text-white/60">Комісії</div>
+              <div className="text-sm text-white/60">Угоди</div>
             </div>
           </div>
         </div>

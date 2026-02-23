@@ -1,512 +1,146 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Save, LocateFixed } from 'lucide-react';
+import pb from '@/integrations/pocketbase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { ArrowLeft, Loader2, Upload, FileText, Trash2, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import pb from '@/integrations/pocketbase/client';
-import { toast } from 'sonner';
-
-interface Manager {
-  id: string;
-  full_name: string;
-}
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const PropertyEditPage = () => {
-  const { t, language } = useLanguage();
-  const { user, role } = useAuth();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-
   const [loading, setLoading] = useState(false);
-  const [fetchLoading, setFetchLoading] = useState(true);
-  const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [managers, setManagers] = useState<Manager[]>([]);
-
-  const [formData, setFormData] = useState({
-    address: '',
-    owner_name: '',
-    owner_phone: '',
-    description: '',
-    property_type: 'apartment',
-    deal_type: 'sale',
-    price: '',
-    external_link: '',
-    photos: [] as string[],
-    area: '',
-    floor: '',
-    heating: '',
-    rooms: '',
-    condition: '',
-    documents: [] as string[],
-    assigned_manager_id: '',
+  const [form, setForm] = useState({
+    title: '', address: '', district: 'Центр', status: 'active', operation_type: 'sale', category: 'apartment',
+    price: '', currency: 'UAH', area_total: '', rooms: '', latitude: '', longitude: '', owner_phones: '', tags: '',
+    description: '', photos: '', agent_notes: '',
   });
 
-  const [documentFiles, setDocumentFiles] = useState<{ name: string; url: string }[]>([]);
-
-  const canAssignManager = role === 'superuser' || role === 'top_manager';
-
   useEffect(() => {
-    if (id) {
-      fetchProperty();
-    }
-    if (canAssignManager) {
-      fetchManagers();
-    }
-  }, [id, canAssignManager]);
-
-  const fetchProperty = async () => {
-    try {
-      const record = await pb.collection('properties').getOne(id!);
-
-      setFormData({
-        address: record.address || '',
-        owner_name: record.owner_name || '',
-        owner_phone: record.owner_phone || '',
-        description: record.description || '',
-        property_type: record.property_type || 'apartment',
-        deal_type: record.deal_type || 'sale',
-        price: record.price?.toString() || '',
-        external_link: record.external_link || '',
-        photos: record.photos || [],
-        area: record.area?.toString() || '',
-        floor: record.floor?.toString() || '',
-        heating: record.heating || '',
-        rooms: record.rooms?.toString() || '',
-        condition: record.condition || '',
-        documents: record.documents || [],
-        assigned_manager_id: record.assigned_manager_id || '',
+    const load = async () => {
+      if (!id) return;
+      const { data, error } = await pb.from('properties').select('*').eq('id', id).single();
+      if (error || !data) return;
+      setForm({
+        title: data.title ?? '',
+        address: data.address ?? '',
+        district: data.district ?? 'Центр',
+        status: data.status ?? 'active',
+        operation_type: data.operation_type ?? 'sale',
+        category: data.category ?? 'apartment',
+        price: data.price?.toString() ?? '',
+        currency: data.currency ?? 'UAH',
+        area_total: data.area_total?.toString() ?? '',
+        rooms: data.rooms?.toString() ?? '',
+        latitude: data.latitude?.toString() ?? '',
+        longitude: data.longitude?.toString() ?? '',
+        owner_phones: (data.owner_phones ?? []).join(', '),
+        tags: (data.tags ?? []).join(', '),
+        description: data.description ?? '',
+        photos: (data.photos ?? []).join(', '),
+        agent_notes: data.agent_notes ?? '',
       });
+    };
+    void load();
+  }, [id]);
 
-      // Генерація URL для документів
-      const docs = (record.documents || []).map((docName: string) => ({
-        name: docName,
-        url: pb.files.getUrl(record, docName),
-      }));
-      setDocumentFiles(docs);
-    } catch (error: any) {
-      console.error('Помилка завантаження об’єкта:', error);
-      toast.error('Не вдалося завантажити об’єкт');
-    } finally {
-      setFetchLoading(false);
-    }
+  const useMyLocation = () => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setForm((prev) => ({ ...prev, latitude: String(pos.coords.latitude), longitude: String(pos.coords.longitude) }));
+    });
   };
 
-  const fetchManagers = async () => {
-    try {
-      const data = await pb.collection('users').getFullList({
-        sort: 'full_name',
-        fields: 'id, full_name',
-      });
-      setManagers(data.map((item: any) => ({ id: item.id, full_name: item.full_name })));
-    } catch (error) {
-      console.error('Помилка завантаження менеджерів:', error);
-    }
-  };
+  const pricePerSqm = useMemo(() => {
+    const price = Number(form.price);
+    const area = Number(form.area_total);
+    if (!price || !area) return 0;
+    return Math.round((price / area) * 100) / 100;
+  }, [form.price, form.area_total]);
 
-  const handleChange = (field: string, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !id) return;
-
-    setUploadingDocs(true);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => {
-        formData.append('documents', file);
-      });
-
-      const updated = await pb.collection('properties').update(id, formData);
-
-      const newDocs = (updated.documents || []).map((docName: string) => ({
-        name: docName,
-        url: pb.files.getUrl(updated, docName),
-      }));
-
-      setDocumentFiles(newDocs);
-      setFormData((prev) => ({ ...prev, documents: updated.documents }));
-
-      toast.success('Документи додано');
-    } catch (error: any) {
-      console.error('Помилка завантаження документів:', error);
-      toast.error(error.message || 'Не вдалося завантажити документи');
-    } finally {
-      setUploadingDocs(false);
-    }
-  };
-
-  const removeDocument = async (index: number) => {
-    try {
-      const currentDocs = [...formData.documents];
-      currentDocs.splice(index, 1);
-
-      await pb.collection('properties').update(id!, { documents: currentDocs });
-
-      const updatedDocs = currentDocs.map((docName: string) => ({
-        name: docName,
-        url: pb.files.getUrl({ id: id! } as any, docName),
-      }));
-
-      setDocumentFiles(updatedDocs);
-      setFormData((prev) => ({ ...prev, documents: currentDocs }));
-
-      toast.success('Документ видалено');
-    } catch (error: any) {
-      console.error('Помилка видалення документа:', error);
-      toast.error('Не вдалося видалити документ');
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user || !id) return;
-
+    if (!id) return;
     setLoading(true);
     try {
-      await pb.collection('properties').update(id, {
-        address: formData.address,
-        owner_name: formData.owner_name,
-        owner_phone: formData.owner_phone,
-        description: formData.description,
-        property_type: formData.property_type,
-        deal_type: formData.deal_type,
-        price: parseFloat(formData.price) || 0,
-        external_link: formData.external_link,
-        area: parseFloat(formData.area) || null,
-        floor: parseInt(formData.floor) || null,
-        heating: formData.heating,
-        rooms: parseInt(formData.rooms) || null,
-        condition: formData.condition,
-        assigned_manager_id: formData.assigned_manager_id || null,
-      });
-
-      toast.success(t('common.success'));
+      const { error } = await pb.from('properties').update({
+        title: form.title,
+        description: form.description || null,
+        address: form.address,
+        district: form.district,
+        status: form.status,
+        operation_type: form.operation_type,
+        category: form.category,
+        price: form.price ? Number(form.price) : null,
+        currency: form.currency,
+        area_total: form.area_total ? Number(form.area_total) : null,
+        rooms: form.rooms ? Number(form.rooms) : null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
+        owner_phones: form.owner_phones.split(',').map((v) => v.trim()).filter(Boolean),
+        tags: form.tags.split(',').map((v) => v.trim()).filter(Boolean),
+        photos: form.photos.split(',').map((v) => v.trim()).filter(Boolean).slice(0, 30),
+        price_per_sqm: pricePerSqm || null,
+        agent_notes: form.agent_notes || null,
+      }).eq('id', id);
+      if (error) throw error;
       navigate('/properties');
-    } catch (error: any) {
-      console.error('Помилка збереження об’єкта:', error);
-      toast.error(error.message || t('common.error'));
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetchLoading) {
-    return (
-      <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
+  const lat = Number(form.latitude);
+  const lng = Number(form.longitude);
+  const hasPoint = !Number.isNaN(lat) && !Number.isNaN(lng) && lat && lng;
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/properties">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">{t('properties.edit')}</h1>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <Card className="shadow-card border-0">
-            <CardHeader>
-              <CardTitle>{t('properties.edit')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Основні поля */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="address">{t('properties.address')}</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price">{t('properties.price')}</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => handleChange('price', e.target.value)}
-                  />
-                </div>
+      <div className="space-y-6 max-w-4xl">
+        <Button variant="ghost" asChild className="px-0"><Link to="/properties"><ArrowLeft className="mr-2 h-4 w-4" />Назад</Link></Button>
+        <Card>
+          <CardHeader><CardTitle>Редагування об'єкта</CardTitle></CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={onSubmit}>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2"><Label>Назва</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Тип операції</Label><Select value={form.operation_type} onValueChange={(v) => setForm({ ...form, operation_type: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sale">Продаж</SelectItem><SelectItem value="rent">Оренда</SelectItem><SelectItem value="new_build">Новобудова</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2"><Label>Категорія</Label><Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="apartment">Квартира</SelectItem><SelectItem value="house">Будинок</SelectItem><SelectItem value="commercial">Комерція</SelectItem><SelectItem value="other">Інше</SelectItem></SelectContent></Select></div>
               </div>
 
-              {/* Тип та угода */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>{t('properties.type')}</Label>
-                  <Select
-                    value={formData.property_type}
-                    onValueChange={(v) => handleChange('property_type', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="apartment">{t('property.apartment')}</SelectItem>
-                      <SelectItem value="house">{t('property.house')}</SelectItem>
-                      <SelectItem value="commercial">{t('property.commercial')}</SelectItem>
-                      <SelectItem value="land">{t('property.land')}</SelectItem>
-                      <SelectItem value="office">{t('property.office')}</SelectItem>
-                      <SelectItem value="other">{t('property.other')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('properties.dealType')}</Label>
-                  <Select
-                    value={formData.deal_type}
-                    onValueChange={(v) => handleChange('deal_type', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sale">{t('deal.sale')}</SelectItem>
-                      <SelectItem value="rent">{t('deal.rent')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2"><Label>Адреса</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Мікрорайон</Label><Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Статус</Label><Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Активний</SelectItem><SelectItem value="archived">Архів</SelectItem></SelectContent></Select></div>
               </div>
 
-              {/* Власник */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="owner_name">{t('properties.ownerName')}</Label>
-                  <Input
-                    id="owner_name"
-                    value={formData.owner_name}
-                    onChange={(e) => handleChange('owner_name', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="owner_phone">{t('properties.ownerPhone')}</Label>
-                  <Input
-                    id="owner_phone"
-                    value={formData.owner_phone}
-                    onChange={(e) => handleChange('owner_phone', e.target.value)}
-                  />
-                </div>
+              <div className="grid md:grid-cols-4 gap-4">
+                <div className="space-y-2"><Label>Ціна</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Валюта</Label><Input value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Площа</Label><Input type="number" value={form.area_total} onChange={(e) => setForm({ ...form, area_total: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Ціна за м²</Label><Input disabled value={pricePerSqm || ''} /></div>
               </div>
 
-              {/* Призначення менеджера (якщо права дозволяють) */}
-              {canAssignManager && (
-                <div className="space-y-2">
-                  <Label htmlFor="assigned_manager_id">
-                    {language === 'uk' ? 'Призначений менеджер' : 'Assigned Manager'}
-                  </Label>
-                  <Select
-                    value={formData.assigned_manager_id}
-                    onValueChange={(v) => handleChange('assigned_manager_id', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={language === 'uk' ? 'Оберіть менеджера' : 'Select manager'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">{language === 'uk' ? 'Не призначено' : 'Not assigned'}</SelectItem>
-                      {managers.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2"><Label>Фото URL (до 30)</Label><Textarea value={form.photos} onChange={(e) => setForm({ ...form, photos: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Телефони власника</Label><Input value={form.owner_phones} onChange={(e) => setForm({ ...form, owner_phones: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Теги</Label><Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Нотатки агента</Label><Textarea value={form.agent_notes} onChange={(e) => setForm({ ...form, agent_notes: e.target.value })} /></div>
 
-              {/* Додаткові характеристики */}
-              <Accordion type="single" collapsible>
-                <AccordionItem value="details">
-                  <AccordionTrigger>{language === 'uk' ? 'Додаткові характеристики' : 'Additional Details'}</AccordionTrigger>
-                  <AccordionContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="area">{language === 'uk' ? 'Площа (м²)' : 'Area (m²)'}</Label>
-                        <Input
-                          id="area"
-                          type="number"
-                          value={formData.area}
-                          onChange={(e) => handleChange('area', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="rooms">{language === 'uk' ? 'Кімнат' : 'Rooms'}</Label>
-                        <Input
-                          id="rooms"
-                          type="number"
-                          value={formData.rooms}
-                          onChange={(e) => handleChange('rooms', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="floor">{language === 'uk' ? 'Поверх' : 'Floor'}</Label>
-                        <Input
-                          id="floor"
-                          type="number"
-                          value={formData.floor}
-                          onChange={(e) => handleChange('floor', e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="heating">{language === 'uk' ? 'Опалення' : 'Heating'}</Label>
-                        <Input
-                          id="heating"
-                          value={formData.heating}
-                          onChange={(e) => handleChange('heating', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="condition">{language === 'uk' ? 'Стан' : 'Condition'}</Label>
-                        <Input
-                          id="condition"
-                          value={formData.condition}
-                          onChange={(e) => handleChange('condition', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              {/* Документи */}
-              <Accordion type="single" collapsible>
-                <AccordionItem value="documents">
-                  <AccordionTrigger>{t('properties.documents') || 'Документи'}</AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    <div>
-                      <Label className="mb-2 block">
-                        {language === 'uk' ? 'Додати документи' : 'Add documents'}
-                      </Label>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('doc-upload')?.click()}
-                          disabled={uploadingDocs}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {language === 'uk' ? 'Завантажити' : 'Upload'}
-                        </Button>
-                        {uploadingDocs && <Loader2 className="h-4 w-4 animate-spin" />}
-                      </div>
-                      <input
-                        id="doc-upload"
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handleDocumentUpload}
-                      />
-                    </div>
-
-                    {documentFiles.length > 0 && (
-                      <div className="space-y-2 mt-4">
-                        {documentFiles.map((doc, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between p-3 bg-muted rounded-md"
-                          >
-                            <div className="flex items-center gap-3">
-                              <FileText className="h-5 w-5 text-primary" />
-                              <span className="text-sm truncate max-w-[240px]">{doc.name}</span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeDocument(idx)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              {/* Опис */}
               <div className="space-y-2">
-                <Label htmlFor="description">{t('properties.description')}</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                  rows={5}
-                  placeholder={language === 'uk' ? 'Детальний опис об’єкта...' : 'Detailed property description...'}
-                />
+                <div className="flex items-center justify-between"><Label>Координати та карта</Label><Button type="button" variant="outline" onClick={useMyLocation}><LocateFixed className="mr-2 h-4 w-4" />Моя геолокація</Button></div>
+                <div className="grid grid-cols-2 gap-3"><Input placeholder="Широта" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /><Input placeholder="Довгота" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></div>
+                <iframe title="map" className="h-72 w-full rounded-md border" src={hasPoint ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}` : 'https://www.openstreetmap.org/export/embed.html?bbox=32.18%2C48.48%2C32.32%2C48.56&layer=mapnik'} />
               </div>
 
-              {/* Посилання */}
-              <div className="space-y-2">
-                <Label htmlFor="external_link">{t('properties.link')}</Label>
-                <Input
-                  id="external_link"
-                  value={formData.external_link}
-                  onChange={(e) => handleChange('external_link', e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
-
-              {/* Кнопки */}
-              <div className="flex gap-4 pt-6">
-                <Button
-                  type="submit"
-                  className="flex-1 gradient-primary text-primary-foreground"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('common.loading')}
-                    </>
-                  ) : (
-                    t('common.save')
-                  )}
-                </Button>
-
-                <Button type="button" variant="outline" asChild>
-                  <Link to="/properties">{t('common.cancel')}</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </form>
+              <Button type="submit" disabled={loading}><Save className="mr-2 h-4 w-4" />{loading ? 'Збереження...' : 'Зберегти'}</Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );
