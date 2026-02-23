@@ -16,6 +16,8 @@ import { UsersPage } from "@/pages/UsersPage";
 import { NotesPage } from "@/pages/NotesPage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { DocumentsPage } from "@/pages/DocumentsPage";
+import { ClientsPage } from "@/pages/ClientsPage";
+import { DealsPage } from "@/pages/DealsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -160,6 +162,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <DocumentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clients"
+        element={
+          <ProtectedRoute>
+            <ClientsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/deals"
+        element={
+          <ProtectedRoute>
+            <DealsPage />
           </ProtectedRoute>
         }
       />
