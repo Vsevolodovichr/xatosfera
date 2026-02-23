@@ -1,277 +1,153 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import {
-  Building2,
-  Plus,
-  Search,
-  Filter,
-  MoreVertical,
-  MapPin,
-  Phone,
-  ExternalLink,
-  Edit,
-  Trash2,
-  X,
-  Ruler,
-  DoorOpen,
-  LayoutGrid,
-  User,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Search, Plus, MapPin, Image as ImageIcon } from 'lucide-react';
 import pb from '@/integrations/pocketbase/client';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-interface Property {
+type Property = {
   id: string;
+  title: string;
+  description: string | null;
   address: string;
-  owner_name: string;
-  owner_phone: string;
-  description: string;
-  property_type: string;
-  deal_type: string;
-  price: number;
+  city: string | null;
+  price: number | null;
+  status: string;
   photos: string[];
-  external_link: string;
-  created: string;
-  area: number | null;
-  floor: number | null;
-  rooms: number | null;
-  heating: string | null;
-  condition: string | null;
-  user_id: string;
-  assigned_manager_id: string | null;
-}
+  created_at: string;
+};
 
-interface Manager {
-  id: string;
-  full_name: string;
-}
+const statusColor: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  available: 'bg-info/10 text-info',
+  sold: 'bg-success/10 text-success',
+  rented: 'bg-warning/10 text-warning',
+};
 
 export const PropertiesPage = () => {
-  const { t, language } = useLanguage();
-  const { user } = useAuth();
+  const { language } = useLanguage();
   const [properties, setProperties] = useState<Property[]>([]);
-  const [managers, setManagers] = useState<Record<string, Manager>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterDealType, setFilterDealType] = useState('all');
-  const [filterPropertyCategory, setFilterPropertyCategory] = useState('all');
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [status, setStatus] = useState('all');
 
   useEffect(() => {
-    fetchProperties();
-  }, [user]);
-
-  const fetchProperties = async () => {
-    if (!user) return;
-
-    try {
-      const data = await pb.collection('properties').getFullList({
-        sort: '-created',
-      });
-      setProperties((data as unknown as Property[]) || []);
-
-      const managerIds = new Set<string>();
-      data.forEach((p: any) => {
-        if (p.user_id) managerIds.add(p.user_id);
-        if (p.assigned_manager_id) managerIds.add(p.assigned_manager_id);
-      });
-
-      if (managerIds.size > 0) {
-        const managersData = await pb.collection('users').getFullList({
-          filter: `id ?~ "${Array.from(managerIds).join(',')}"`,
-          fields: 'id, full_name',
-        });
-
-        const managersMap: Record<string, Manager> = {};
-        managersData.forEach((m: any) => {
-          managersMap[m.id] = { id: m.id, full_name: m.full_name };
-        });
-        setManagers(managersMap);
+    const fetchProperties = async () => {
+      try {
+        const { data, error } = await pb
+          .from('properties')
+          .select('id,title,description,address,city,price,status,photos,created_at')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setProperties((data ?? []) as Property[]);
+      } catch (err) {
+        console.error('Error fetching properties', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Помилка завантаження об’єктів:', error);
-      toast.error('Не вдалося завантажити об’єкти');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const handleDeleteProperty = async (id: string) => {
-    if (!confirm(t('common.confirm'))) return;
+    void fetchProperties();
+  }, []);
 
-    try {
-      await pb.collection('properties').delete(id);
-      toast.success(t('common.success'));
-      fetchProperties();
-    } catch (error) {
-      console.error('Помилка видалення:', error);
-      toast.error(t('common.error'));
-    }
-  };
-
-  const clearFilters = () => {
-    setSearch('');
-    setFilterType('all');
-    setFilterDealType('all');
-    setFilterPropertyCategory('all');
-    setPriceMin('');
-    setPriceMax('');
-    setShowAdvancedFilters(false);
-  };
-
-  const hasActiveFilters = search || filterType !== 'all' || filterDealType !== 'all' || filterPropertyCategory !== 'all' || priceMin || priceMax;
-
-  const filteredProperties = useMemo(() => {
-    return properties.filter((p: any) => {
-      const matchesSearch =
-        p.address?.toLowerCase().includes(search.toLowerCase()) ||
-        p.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-        p.owner_phone?.includes(search) ||
-        p.description?.toLowerCase().includes(search.toLowerCase());
-
-      const matchesType = filterType === 'all' || p.property_type === filterType;
-      const matchesDealType = filterDealType === 'all' || p.deal_type === filterDealType;
-
-      const isCommercial = ['commercial', 'office'].includes(p.property_type);
-      const matchesCategory =
-        filterPropertyCategory === 'all' ||
-        (filterPropertyCategory === 'commercial' && isCommercial) ||
-        (filterPropertyCategory === 'residential' && !isCommercial);
-
-      const minPrice = priceMin ? Number(priceMin) : -Infinity;
-      const maxPrice = priceMax ? Number(priceMax) : Infinity;
-      const matchesPrice = p.price >= minPrice && p.price <= maxPrice;
-
-      return matchesSearch && matchesType && matchesDealType && matchesCategory && matchesPrice;
-    });
-  }, [properties, search, filterType, filterDealType, filterPropertyCategory, priceMin, priceMax]);
-
-  const getPhotoUrl = (property: any, index = 0) => {
-    if (property.photos?.[index]) {
-      return pb.files.getUrl(property, property.photos[index]);
-    }
-    return '/placeholder-property.jpg';
-  };
-
-  const getManagerName = (id: string | null) => {
-    if (!id) return language === 'uk' ? 'Не призначено' : 'Not assigned';
-    return managers[id]?.full_name || '—';
-  };
+  const filteredProperties = useMemo(
+    () =>
+      properties.filter((p) => {
+        const q = search.toLowerCase();
+        const matchesSearch =
+          p.title.toLowerCase().includes(q) ||
+          p.address.toLowerCase().includes(q) ||
+          (p.city ?? '').toLowerCase().includes(q);
+        const matchesStatus = status === 'all' || p.status === status;
+        return matchesSearch && matchesStatus;
+      }),
+    [properties, search, status],
+  );
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{t('properties.title')}</h1>
-              <p className="text-muted-foreground">{language === 'uk' ? 'Керування об’єктами нерухомості' : 'Manage properties'}</p>
-            </div>
-          </div>
-          <Button asChild className="gradient-primary text-primary-foreground">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <h1 className="text-2xl font-bold">{language === 'uk' ? 'Об\'єкти' : 'Properties'}</h1>
+          <Button asChild>
             <Link to="/properties/new">
               <Plus className="mr-2 h-4 w-4" />
-              {t('properties.add')}
+              {language === 'uk' ? 'Додати об\'єкт' : 'Add property'}
             </Link>
           </Button>
         </div>
 
-        {/* Фільтри */}
-        <Card className="shadow-card border-0">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('properties.search')}
-                  className="pl-10"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              {/* інші фільтри... (скорочено для прикладу, встав свій повний блок фільтрів) */}
+        <Card>
+          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={language === 'uk' ? 'Пошук за назвою, адресою, містом...' : 'Search...'} />
             </div>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'uk' ? 'Всі статуси' : 'All statuses'}</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="available">Available</SelectItem>
+                <SelectItem value="sold">Sold</SelectItem>
+                <SelectItem value="rented">Rented</SelectItem>
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 
-        {/* Список об’єктів */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          </div>
-        ) : filteredProperties.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property: any) => (
-              <Card key={property.id} className="shadow-card border-0 overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="relative aspect-video bg-muted">
-                    <img
-                      src={getPhotoUrl(property)}
-                      alt="Property"
-                      className="w-full h-full object-cover"
-                    />
-                    <Badge className="absolute top-2 left-2 bg-background/80">
-                      {t(`property.${property.property_type}`)}
-                    </Badge>
-                    <Badge variant="secondary" className="absolute top-2 right-2 bg-background/80">
-                      {t(`deal.${property.deal_type}`)}
-                    </Badge>
+        {loading ? <p>Loading...</p> : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filteredProperties.map((property) => (
+              <Card key={property.id} className="overflow-hidden">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-lg">{property.title}</CardTitle>
+                    <Badge className={statusColor[property.status] ?? statusColor.draft}>{property.status}</Badge>
                   </div>
-                  {/* решта картки... (встав сюди свій оригінальний JSX картки) */}
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    {property.address}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {property.photos?.length ? (
+                    <Carousel className="w-full">
+                      <CarouselContent>
+                        {property.photos.map((url, i) => (
+                          <CarouselItem key={i}>
+                            <img src={url} alt={`${property.title}-${i}`} className="h-44 w-full rounded-md object-cover" />
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      <CarouselPrevious className="left-2" />
+                      <CarouselNext className="right-2" />
+                    </Carousel>
+                  ) : (
+                    <div className="h-44 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+                      <ImageIcon className="h-5 w-5 mr-2" />
+                      {language === 'uk' ? 'Немає фото' : 'No photos'}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{language === 'uk' ? 'Ціна' : 'Price'}</span>
+                    <strong>{property.price ? new Intl.NumberFormat('uk-UA').format(Number(property.price)) : '—'} ₴</strong>
+                  </div>
+
+                  <Button variant="outline" asChild className="w-full">
+                    <Link to={`/properties/${property.id}/edit`}>{language === 'uk' ? 'Редагувати' : 'Edit'}</Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
-        ) : (
-          <Card className="shadow-card border-0">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">{t('common.noData')}</h3>
-              <p className="text-muted-foreground text-center mb-6">
-                {hasActiveFilters
-                  ? (language === 'uk' ? 'Не знайдено об’єктів за критеріями' : 'No matching properties')
-                  : (language === 'uk' ? 'Додайте перший об’єкт' : 'Add your first property')}
-              </p>
-              {hasActiveFilters ? (
-                <Button onClick={clearFilters} variant="outline">
-                  {language === 'uk' ? 'Скинути фільтри' : 'Clear filters'}
-                </Button>
-              ) : (
-                <Button asChild>
-                  <Link to="/properties/new">
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('properties.add')}
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
         )}
       </div>
     </AppLayout>

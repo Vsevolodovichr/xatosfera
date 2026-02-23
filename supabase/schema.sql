@@ -185,3 +185,76 @@ with check (user_id = auth.uid() or public.has_role('top_manager'));
 create policy "documents_owner_or_manager" on public.user_documents
 for all using (user_id = auth.uid() or public.has_role('top_manager'))
 with check (user_id = auth.uid() or public.has_role('top_manager'));
+
+-- CRM extensions: clients, deals pipeline, tasks/events metadata
+alter table public.notes add column if not exists priority text default 'medium';
+alter table public.notes add column if not exists done boolean not null default false;
+
+alter table public.calendar_events add column if not exists event_type text default 'meeting';
+alter table public.calendar_events add column if not exists status text default 'planned';
+alter table public.calendar_events add column if not exists google_event_id text;
+
+create table if not exists public.clients (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  phone text,
+  email text,
+  segment text not null default 'buyer',
+  age int,
+  budget numeric(14,2),
+  tags text[] not null default '{}',
+  notes text,
+  passport_doc_url text,
+  lead_source text,
+  created_by uuid not null references public.users(id),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.client_interactions (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients(id) on delete cascade,
+  interaction_type text not null,
+  details text,
+  happened_at timestamptz not null default timezone('utc', now()),
+  created_by uuid not null references public.users(id)
+);
+
+create table if not exists public.deals (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  stage text not null default 'lead',
+  property_id uuid references public.properties(id) on delete set null,
+  client_id uuid references public.clients(id) on delete set null,
+  assigned_agent_id uuid references public.users(id) on delete set null,
+  comments text,
+  contract_url text,
+  due_date timestamptz,
+  created_by uuid not null references public.users(id),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+drop trigger if exists trg_clients_updated_at on public.clients;
+create trigger trg_clients_updated_at before update on public.clients for each row execute procedure public.set_updated_at();
+drop trigger if exists trg_deals_updated_at on public.deals;
+create trigger trg_deals_updated_at before update on public.deals for each row execute procedure public.set_updated_at();
+
+alter table public.clients enable row level security;
+alter table public.client_interactions enable row level security;
+alter table public.deals enable row level security;
+
+create policy "clients_select_for_authenticated" on public.clients
+for select using (auth.uid() is not null);
+create policy "clients_write_for_manager_up" on public.clients
+for all using (public.has_role('manager')) with check (public.has_role('manager'));
+
+create policy "client_interactions_select_for_authenticated" on public.client_interactions
+for select using (auth.uid() is not null);
+create policy "client_interactions_write_for_manager_up" on public.client_interactions
+for all using (public.has_role('manager')) with check (public.has_role('manager'));
+
+create policy "deals_select_for_authenticated" on public.deals
+for select using (auth.uid() is not null);
+create policy "deals_write_for_manager_up" on public.deals
+for all using (public.has_role('manager')) with check (public.has_role('manager'));
