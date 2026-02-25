@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { uk, enUS } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Plus } from 'lucide-react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi } from '@/integrations/cloudflare/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ export const CalendarPage = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await pb.from('calendar_events').select('*').eq('user_id', user.id).order('starts_at', { ascending: true });
+    const { data } = await cloudflareApi.from('calendar_events').select('*').eq('user_id', user.id).order('starts_at', { ascending: true });
     setEvents((data ?? []) as EventItem[]);
   };
 
@@ -32,7 +32,7 @@ export const CalendarPage = () => {
 
   const addTask = async () => {
     if (!title || !user) return;
-    await pb.from('calendar_events').insert({
+    await cloudflareApi.from('calendar_events').insert({
       title,
       starts_at: new Date().toISOString(),
       user_id: user.id,
@@ -85,57 +85,6 @@ export const CalendarPage = () => {
               <p>• {t('calendar.reminder1')}</p>
               <p>• {t('calendar.reminder2')}</p>
               <p>• {t('calendar.reminder3')}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </AppLayout>
-  );
-};
-
-
-  useEffect(() => { void load(); }, [user]);
-
-  const addTask = async () => {
-    if (!title || !user) return;
-    await pb.from('calendar_events').insert({
-      title,
-      starts_at: new Date().toISOString(),
-      user_id: user.id,
-      event_type: eventType,
-      status: 'planned',
-    });
-    setTitle('');
-    void load();
-  };
-
-  return (
-    <AppLayout>
-      <div className="space-y-5">
-        <h1 className="text-2xl font-bold">Календар та Завдання</h1>
-        <Card>
-          <CardHeader><CardTitle>Нова подія</CardTitle></CardHeader>
-          <CardContent className="grid md:grid-cols-4 gap-3">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Перегляд / зустріч / дедлайн" />
-            <Select value={eventType} onValueChange={setEventType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="meeting">meeting</SelectItem><SelectItem value="viewing">viewing</SelectItem><SelectItem value="deadline">deadline</SelectItem></SelectContent></Select>
-            <Button variant="outline">Синхр. Google Calendar (stub)</Button>
-            <Button onClick={addTask}><Plus className="mr-2 h-4 w-4" />Додати</Button>
-          </CardContent>
-        </Card>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader><CardTitle>Тижневий вид</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {events.slice(0, 7).map((event) => <div key={event.id} className="border rounded p-3 flex items-center justify-between"><div><p className="font-medium">{event.title}</p><p className="text-sm text-muted-foreground">{format(new Date(event.starts_at), 'dd.MM.yyyy HH:mm')}</p></div><CalendarIcon className="h-4 w-4 text-muted-foreground" /></div>)}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Місячний вид / нагадування</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>• Push/email нагадування підключаються через Supabase Edge Functions + cron.</p>
-              <p>• Інтеграція Google Calendar: OAuth + API sync worker.</p>
-              <p>• Кольорові події: meeting/viewing/deadline (мінімалістичний UI).</p>
             </CardContent>
           </Card>
         </div>

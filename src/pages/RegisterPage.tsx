@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Building2, Mail, Lock, Eye, EyeOff, Loader2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import pb from '@/integrations/pocketbase/client';
 
 export const RegisterPage = () => {
   const { t } = useLanguage();
@@ -23,23 +22,8 @@ export const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      const { error } = await pb.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        },
-      });
-      if (error) {
-        toast.error(error.message || t('common.error'));
-      }
-    } catch (error: any) {
-      toast.error(error.message || t('common.error'));
-    } finally {
-      setGoogleLoading(false);
-    }
+  const handleGoogleSignIn = () => {
+    toast.info(t('auth.oauth_not_available') || "Google Sign-In is not available in this version. Please use email and password.");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -286,34 +270,4 @@ export const RegisterPage = () => {
       </div>
     </div>
   );
-};
-    <Link to="/login" className="font-medium text-primary hover:underline">
-                    {t('auth.login')}
-                  </Link>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-};
-over:underline">
-                    {t('auth.login')}
-                  </Link>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-};
-/div>
-    </div>
-  );
-};
-);
 };

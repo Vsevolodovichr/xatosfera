@@ -368,8 +368,18 @@ const storage = {
   },
 };
 
+// Normalize record to match expected format
+function normalizeRecord(record: Record<string, any> | null): Record<string, any> {
+  if (!record) return {};
+  return {
+    ...record,
+    created: record.created_at,
+    updated: record.updated_at,
+  };
+}
+
 // Main client object - compatible with existing code
-const pb = {
+export const cloudflareApi = {
   // Database operations
   from(tableName: string) {
     return createQueryBuilder(tableName);
@@ -480,14 +490,4 @@ const pb = {
   },
 };
 
-// Normalize record to match expected format
-function normalizeRecord(record: Record<string, any> | null): Record<string, any> {
-  if (!record) return {};
-  return {
-    ...record,
-    created: record.created_at,
-    updated: record.updated_at,
-  };
-}
-
-export default pb;
+export default cloudflareApi;

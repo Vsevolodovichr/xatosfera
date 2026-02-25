@@ -31,25 +31,20 @@ import {
   Building2,
   Handshake,
 } from 'lucide-react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi } from '@/integrations/cloudflare/client';
 import { toast } from 'sonner';
-import { validateFile, generateSafeFilename, ALLOWED_DOCUMENT_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/file-validation';
+import { validateFile } from '@/lib/file-validation';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API_URL = import.meta.env.VITE_API_URL || 'https://crm-api.0991597753r.workers.dev';
 
 interface Document {
   id: string;
   title: string;
   category: string;
-  file_url: string; // This stores the R2 object key
+  file_url: string;
   file_name: string;
   created_at: string;
 }
-
-// Helper to get document URL
-const getDocumentUrl = (filePath: string): string => {
-  return `${API_URL}/api/files/${encodeURIComponent(filePath)}`;
-};
 
 const CATEGORIES = [
   { value: 'fop', label: 'Документи ФОП', icon: FileCheck },
@@ -59,7 +54,7 @@ const CATEGORIES = [
 ];
 
 export const DocumentsPage = () => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +75,7 @@ export const DocumentsPage = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await pb
+      const { data, error } = await cloudflareApi
         .from('documents')
         .select('*')
         .order('created_at', { ascending: false });
@@ -108,7 +103,6 @@ export const DocumentsPage = () => {
       return;
     }
 
-    // SECURITY: Validate file before upload
     const validation = validateFile(newDocument.file);
     if (!validation.valid) {
       toast.error(validation.error || 'Невалідний файл');
@@ -117,25 +111,21 @@ export const DocumentsPage = () => {
 
     setUploading(true);
     try {
-      // Upload document through API
-      const formData = new FormData();
-      formData.append('file', newDocument.file);
-      formData.append('title', newDocument.title);
-      formData.append('category', newDocument.category);
+      // 1. Upload file to R2
+      const path = `documents/${Date.now()}_${newDocument.file.name}`;
+      const uploadRes = await cloudflareApi.storage.from('documents').upload(path, newDocument.file);
+      if (uploadRes.error) throw uploadRes.error;
 
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/api/documents`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
+      // 2. Save record to DB
+      const { error: dbError } = await cloudflareApi.from('documents').insert({
+        title: newDocument.title,
+        category: newDocument.category,
+        file_url: path,
+        file_name: newDocument.file.name,
+        user_id: user.id
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any).error || 'Upload failed');
-      }
+      if (dbError) throw dbError;
 
       toast.success('Документ завантажено');
       setDialogOpen(false);
@@ -153,8 +143,12 @@ export const DocumentsPage = () => {
     if (!confirm('Ви впевнені, що хочете видалити цей документ?')) return;
 
     try {
-      const { error } = await pb.from('documents').delete().eq('id', doc.id);
+      // Remove from DB
+      const { error } = await cloudflareApi.from('documents').delete().eq('id', doc.id);
       if (error) throw error;
+
+      // Remove from storage
+      await cloudflareApi.storage.from('documents').remove([doc.file_url]);
 
       toast.success('Документ видалено');
       fetchDocuments();
@@ -166,9 +160,10 @@ export const DocumentsPage = () => {
 
   const handleDownload = async (doc: Document) => {
     try {
-      // Get document URL from R2 through Worker
-      const url = getDocumentUrl(doc.file_url);
-      window.open(url, '_blank');
+      const res = cloudflareApi.storage.from('documents').getPublicUrl(doc.file_url);
+      if (res.data?.publicUrl) {
+        window.open(res.data.publicUrl, '_blank');
+      }
     } catch (error) {
       console.error('Error downloading document:', error);
       toast.error('Помилка завантаження документа');
@@ -191,7 +186,6 @@ export const DocumentsPage = () => {
   return (
     <AppLayout>
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
@@ -288,7 +282,6 @@ export const DocumentsPage = () => {
           </Dialog>
         </div>
 
-        {/* Category Filter */}
         <Card className="shadow-card border-0">
           <CardContent className="p-4">
             <div className="flex flex-wrap gap-2">
@@ -318,7 +311,6 @@ export const DocumentsPage = () => {
           </CardContent>
         </Card>
 
-        {/* Documents Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
@@ -398,36 +390,4 @@ export const DocumentsPage = () => {
       </div>
     </AppLayout>
   );
-};
-language === 'uk'
-                  ? 'Завантажте перший документ для початку'
-                  : 'Upload your first document to get started'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </AppLayout>
-  );
-};
-       )}
-      </div>
-    </AppLayout>
-  );
-};
-�вантажте перший документ для початку'
-                  : 'Upload your first document to get started'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </AppLayout>
-  );
-};
-       )}
-      </div>
-    </AppLayout>
-  );
-};
 };

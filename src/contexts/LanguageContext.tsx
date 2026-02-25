@@ -53,7 +53,6 @@ const translations = {
     'auth.fullNamePlaceholder': 'Іван Іванов',
     'dashboard.myProperties': 'Мої обʼєкти',
     'dashboard.allProperties': 'Всі обʼєкти',
-    'dashboard.closedDeals': 'Закриті угоди',
     'dashboard.conversion': 'Конверсія лідів',
     'dashboard.avgPrice': 'Середня ціна',
     'dashboard.funnel': 'Воронка угод',
@@ -139,7 +138,6 @@ const translations = {
     'property.street': 'Вулиця',
     'property.building': 'Будинок',
     'property.block': 'Корпус',
-    'property.apartment': 'Квартира',
     'property.rooms': 'Кімнат',
     'property.area_total': 'Площа загальна (м²)',
     'property.area_living': 'Площа житлова (м²)',
@@ -274,12 +272,8 @@ const translations = {
     'properties.dateTo': 'По дату',
     
     // Property Types
-    'property.apartment': 'Квартира',
-    'property.house': 'Будинок',
-    'property.commercial': 'Комерційна',
     'property.land': 'Земельна ділянка',
     'property.office': 'Офіс',
-    'property.other': 'Інше',
     
     // Deal Types
     'deal.sale': 'Продаж',
@@ -376,7 +370,6 @@ const translations = {
     'auth.fullNamePlaceholder': 'John Doe',
     'dashboard.myProperties': 'My Properties',
     'dashboard.allProperties': 'All Properties',
-    'dashboard.closedDeals': 'Closed Deals',
     'dashboard.conversion': 'Lead Conversion',
     'dashboard.avgPrice': 'Average Price',
     'dashboard.funnel': 'Deal Funnel',
@@ -597,12 +590,8 @@ const translations = {
     'properties.dateTo': 'To Date',
     
     // Property Types
-    'property.apartment': 'Apartment',
-    'property.house': 'House',
-    'property.commercial': 'Commercial',
     'property.land': 'Land',
     'property.office': 'Office',
-    'property.other': 'Other',
     
     // Deal Types
     'deal.sale': 'Sale',
