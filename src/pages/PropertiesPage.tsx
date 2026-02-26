@@ -109,39 +109,67 @@ export const PropertiesPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle>{t('properties.advancedFilter')}</CardTitle></CardHeader>
-          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Select value={operationType} onValueChange={setOperationType}>
-              <SelectTrigger><SelectValue placeholder={t('properties.operationType')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('properties.allOperations')}</SelectItem>
-                <SelectItem value="sale">{t('properties.sale')}</SelectItem>
-                <SelectItem value="rent">{t('properties.rent')}</SelectItem>
-                <SelectItem value="new_build">{t('properties.newBuild')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger><SelectValue placeholder={t('properties.type')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('properties.allCategories')}</SelectItem>
-                <SelectItem value="apartment">{t('properties.apartment')}</SelectItem>
-                <SelectItem value="house">{t('properties.house')}</SelectItem>
-                <SelectItem value="commercial">{t('properties.commercial')}</SelectItem>
-                <SelectItem value="other">{t('properties.other')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger><SelectValue placeholder={t('properties.status')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('properties.allStatuses')}</SelectItem>
-                <SelectItem value="active">{t('properties.active')}</SelectItem>
-                <SelectItem value="archived">{t('properties.archived')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={() => { setStatus('all'); setOperationType('all'); setCategory('all'); setPriceFrom(''); setPriceTo(''); }}>{t('properties.resetFilters')}</Button>
-          </CardContent>
-        </Card>
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+// ... existing code ...
+
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="filters" className="border-none">
+            <Card>
+              <AccordionTrigger className="px-6 hover:no-underline font-bold py-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded bg-primary/10">
+                    <Search className="h-4 w-4 text-primary" />
+                  </div>
+                  {t('properties.advancedFilter')}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">{t('properties.operationType')}</label>
+                    <Select value={operationType} onValueChange={setOperationType}>
+                      <SelectTrigger><SelectValue placeholder={t('properties.operationType')} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('properties.allOperations')}</SelectItem>
+                        <SelectItem value="sale">{t('properties.sale')}</SelectItem>
+                        <SelectItem value="rent">{t('properties.rent')}</SelectItem>
+                        <SelectItem value="new_build">{t('properties.newBuild')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">{t('properties.type')}</label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger><SelectValue placeholder={t('properties.type')} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('properties.allCategories')}</SelectItem>
+                        <SelectItem value="apartment">{t('properties.apartment')}</SelectItem>
+                        <SelectItem value="house">{t('properties.house')}</SelectItem>
+                        <SelectItem value="commercial">{t('properties.commercial')}</SelectItem>
+                        <SelectItem value="other">{t('properties.other')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">{t('properties.status')}</label>
+                    <Select value={status} onValueChange={setStatus}>
+                      <SelectTrigger><SelectValue placeholder={t('properties.status')} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('properties.allStatuses')}</SelectItem>
+                        <SelectItem value="active">{t('properties.active')}</SelectItem>
+                        <SelectItem value="archived">{t('properties.archived')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button variant="outline" className="w-full" onClick={() => { setStatus('all'); setOperationType('all'); setCategory('all'); setPriceFrom(''); setPriceTo(''); }}>{t('properties.resetFilters')}</Button>
+                  </div>
+                </div>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        </Accordion>
 
         {loading ? <p>{t('common.loading')}</p> : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
