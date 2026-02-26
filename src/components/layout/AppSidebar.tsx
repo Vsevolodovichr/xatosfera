@@ -63,7 +63,7 @@ export const AppSidebar = () => {
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 h-16 bg-blue-600 z-50 lg:hidden flex items-center justify-between px-4">
+      <div className="fixed top-0 left-0 right-0 h-16 bg-primary z-50 lg:hidden flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -71,7 +71,7 @@ export const AppSidebar = () => {
             className="text-white hover:bg-primary h-12 w-12"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {mobileOpen ? <X className="h-10 w-10" /> : <Menu className="accent h-10 w-10" />}
+            {mobileOpen ? <X className="h-10 w-10" /> : <Menu className="bg-accent h-12 w-12" />}
           </Button>
          <div className="p-6 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
@@ -84,6 +84,7 @@ export const AppSidebar = () => {
               </div>
             </div>
           </div>
+        </div>
       </div>
 
       {mobileOpen && <div className="fixed inset-0 bg-black/50 z-[55] lg:hidden" onClick={() => setMobileOpen(false)} />}
