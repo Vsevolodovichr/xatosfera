@@ -6,49 +6,52 @@
 
 @layer base {
 :root {
-  --background: 35 12% 98%;              /* теплий off-white для контенту */
-  --foreground: 30 10% 10%;              /* майже чорний текст */
-  --card: 0 0% 100%;
-  --card-foreground: 30 10% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 30 10% 10%;
-  /* Primary — Deep Charcoal/Almost Black (для преміум відчуття) */
-  --primary: 30 8% 12%;                  /* темний фон як у логотипі */
+  --background: 0 0% 4%;                 /* майже чорний, але з легким теплом для очей */
+  --foreground: 35 10% 92%;              /* світлий текст */
+  --card: 0 0% 6%;                       /* темніші картки */
+  --card-foreground: 35 10% 92%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 35 10% 92%;
+  /* Primary — глибокий чорний для блоків */
+  --primary: 0 0% 8%;
   --primary-foreground: 35 15% 98%;
-  /* Accent — Warm Gold (з логотипу, не кричущий) */
-  --accent: 38 70% 65%;                  /* #D4AF37 ≈ золото крил */
-  --accent-foreground: 30 10% 10%;
+  /* Accent — тепле золото з логотипу */
+  --accent: 38 80% 65%;                  /* #E5C068 ≈ золото крил */
+  --accent-foreground: 0 0% 4%;
   /* Muted / Secondary */
-  --muted: 35 8% 88%;
-  --muted-foreground: 30 8% 52%;
-  --secondary: 35 8% 88%;
-  --secondary-foreground: 30 10% 10%;
-  --border: 35 6% 82%;
-  --input: 35 6% 82%;
-  --ring: 38 70% 65%;
-  --radius: 0.5rem;                      /* м'який, мінімальний */
-  /* Sidebar — темний як фон логотипу */
-  --sidebar-background: 30 10% 8%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 35 8% 60%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 35 10% 92%;
+  --border: 0 0% 10%;
+  --input: 0 0% 10%;
+  --ring: 38 80% 65%;
+  --radius: 0.5rem;
+  /* Sidebar — чорний з subtle градієнтом */
+  --sidebar-background: 0 0% 3%;
   --sidebar-foreground: 35 15% 92%;
-  --sidebar-primary: 38 70% 65%;         /* золото для активних елементів */
-  --sidebar-primary-foreground: 30 10% 8%;
-  --sidebar-accent: 30 8% 18%;
-  --sidebar-border: 30 8% 15%;
-  /* Градієнти — ледь помітні або відсутні */
-  --gradient-primary: linear-gradient(135deg, hsl(30 8% 12%) 0%, hsl(30 6% 8%) 100%);
-  --gradient-accent: linear-gradient(135deg, hsl(38 70% 65%) 0%, hsl(38 60% 70%) 100%);
+  --sidebar-primary: 38 80% 65%;
+  --sidebar-primary-foreground: 0 0% 4%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-border: 0 0% 8%;
+  /* Градієнти — мінімальні */
+  --gradient-primary: linear-gradient(135deg, hsl(0 0% 4%) 0%, hsl(0 0% 2%) 100%);
+  --gradient-accent: linear-gradient(135deg, hsl(38 80% 65%) 0%, hsl(38 70% 70%) 100%);
+  --gradient-hero: linear-gradient(180deg, hsl(0 0% 4%) 0%, hsl(0 0% 2%) 100%);
 }
 .dark {
-  --background: 30 8% 6%;
-  --foreground: 35 10% 92%;
-  --card: 30 8% 9%;
-  --primary: 38 70% 65%;                 /* золото як основний акцент у dark */
-  --primary-foreground: 30 8% 6%;
-  --accent: 38 70% 65%;
-  --muted: 30 8% 15%;
-  --muted-foreground: 35 6% 68%;
-  --border: 30 6% 16%;
-  --sidebar-background: 30 12% 4%;
+  /* Dark mode тут є основним, тому значення майже ідентичні root */
+  --background: 0 0% 2%;
+  --foreground: 35 10% 94%;
+  --card: 0 0% 5%;
+  --primary: 0 0% 7%;
+  --primary-foreground: 35 15% 98%;
+  --accent: 38 80% 65%;
+  --accent-foreground: 0 0% 2%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 35 8% 65%;
+  --border: 0 0% 8%;
+  --sidebar-background: 0 0% 1%;
 }
 }
 
