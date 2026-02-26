@@ -79,8 +79,8 @@ export const AppSidebar = () => {
                 <Home className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-bold text-lg text-sidebar-foreground">Хатосфера</h1>
-                <p className="text-xs text-sidebar-foreground/60">CRM Нерухомості</p>
+                <h1 className="font-bold text-lg text-sidebar-foreground">ANGELS</h1>
+                <p className="text-xs text-sidebar-foreground/60">Агенція Нерухомості</p>
               </div>
             </div>
           </div>
@@ -103,8 +103,8 @@ export const AppSidebar = () => {
                 <Home className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-bold text-lg text-sidebar-foreground">Хатосфера</h1>
-                <p className="text-xs text-sidebar-foreground/60">CRM Нерухомості</p>
+                <h1 className="font-bold text-lg text-sidebar-foreground">ANGELS</h1>
+                <p className="text-xs text-sidebar-foreground/60">Агенція Нерухомості</p>
               </div>
             </div>
           </div>
