@@ -163,7 +163,7 @@ export const UsersPage = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center">
               <UsersIcon className="h-6 w-6 text-primary" />
@@ -178,7 +178,7 @@ export const UsersPage = () => {
           {hasPermission('manage_users') && (
             <Button
               onClick={() => setCreateDialogOpen(true)}
-              className="gradient-primary text-primary-foreground"
+              className="gradient-primary text-primary-foreground order-last sm:order-none"
             >
               <Plus className="mr-2 h-4 w-4" />
               {t('users.add')}

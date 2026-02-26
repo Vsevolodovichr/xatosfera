@@ -59,7 +59,6 @@ export const CalendarPage = () => {
                 <SelectItem value="deadline">deadline</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">{t('calendar.syncGoogle')}</Button>
             <Button onClick={addTask}><Plus className="mr-2 h-4 w-4" />{t('calendar.add')}</Button>
           </CardContent>
         </Card>

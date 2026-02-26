@@ -52,9 +52,9 @@ export const ReportsPage = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-bold">{t('reports.title')}</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Select value={range} onValueChange={setRange}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -63,7 +63,7 @@ export const ReportsPage = () => {
                 <SelectItem value="90">{t('reports.days_90')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline"><Download className="mr-2 h-4 w-4" />{t('reports.export')}</Button>
+            <Button variant="outline" className="w-full sm:w-auto"><Download className="mr-2 h-4 w-4" />{t('reports.export')}</Button>
           </div>
         </div>
 

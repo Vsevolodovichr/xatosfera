@@ -76,7 +76,7 @@ export const DocumentsPage = () => {
 
     try {
       const { data, error } = await cloudflareApi
-        .from('documents')
+        .from('user_documents')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -117,11 +117,13 @@ export const DocumentsPage = () => {
       if (uploadRes.error) throw uploadRes.error;
 
       // 2. Save record to DB
-      const { error: dbError } = await cloudflareApi.from('documents').insert({
+      const { error: dbError } = await cloudflareApi.from('user_documents').insert({
         title: newDocument.title,
         category: newDocument.category,
         file_url: path,
         file_name: newDocument.file.name,
+        file_size: newDocument.file.size,
+        mime_type: newDocument.file.type || 'application/octet-stream',
         user_id: user.id
       });
 
@@ -144,7 +146,7 @@ export const DocumentsPage = () => {
 
     try {
       // Remove from DB
-      const { error } = await cloudflareApi.from('documents').delete().eq('id', doc.id);
+      const { error } = await cloudflareApi.from('user_documents').delete().eq('id', doc.id);
       if (error) throw error;
 
       // Remove from storage

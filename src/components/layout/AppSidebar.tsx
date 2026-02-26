@@ -60,20 +60,28 @@ export const AppSidebar = () => {
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="icon"
-        className="fixed top-4 left-4 z-50 lg:hidden bg-card shadow-lg border border-border h-12 w-12 rounded-xl"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="h-6 w-6 text-foreground" /> : <Menu className="h-6 w-6 text-foreground" />}
-      </Button>
+      <div className="fixed top-0 left-0 right-0 h-16 bg-blue-600 z-50 lg:hidden flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-blue-700 h-10 w-10"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
+          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
+            <Home className="h-5 w-5 text-blue-600" />
+          </div>
+          <span className="font-bold text-white text-lg">Хатосфера</span>
+        </div>
+      </div>
 
-      {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && <div className="fixed inset-0 bg-black/50 z-[55] lg:hidden" onClick={() => setMobileOpen(false)} />}
 
       <aside
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar transform transition-transform duration-300 lg:translate-x-0',
+          'fixed lg:static inset-y-0 left-0 z-[60] w-64 bg-sidebar transform transition-transform duration-300 lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >

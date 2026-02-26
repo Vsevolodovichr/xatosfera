@@ -45,10 +45,19 @@ export const DealsPage = () => {
     void load();
   };
 
-  const createDeal = async () => {
-    if (!user) return;
+  const createDeal = async (propertyId?: string, clientId?: string) => {
+    if (!user || (!propertyId && !clientId)) {
+      toast.error(t('deals.error_missing_relation') || 'Deal must be linked to a property or client');
+      return;
+    }
+    
+    // Auto-generate title based on property or client (would fetch actual names in a real flow)
+    const dealTitle = propertyId ? `Угода: Об'єкт #${propertyId.slice(0,5)}` : `Угода: Клієнт #${clientId.slice(0,5)}`;
+
     await pb.from('deals').insert({ 
-      title: `${t('deals.newDealTitle')} ${new Date().toLocaleTimeString()}`, 
+      title: dealTitle,
+      property_id: propertyId,
+      client_id: clientId,
       stage: 'lead', 
       created_by: user.id, 
       assigned_agent_id: role === 'manager' ? user.id : null 
@@ -61,7 +70,8 @@ export const DealsPage = () => {
       <div className="space-y-5">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">{t('deals.title')}</h1>
-          <Button onClick={createDeal}>{t('deals.add')}</Button>
+          {/* In a real UI, this would trigger a selection modal first */}
+          <Button onClick={() => createDeal('example-id')}>{t('deals.add')}</Button>
         </div>
         <div className="grid xl:grid-cols-5 md:grid-cols-2 gap-3">
           {stages.map((stage) => (

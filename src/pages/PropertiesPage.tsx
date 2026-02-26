@@ -190,9 +190,18 @@ export const PropertiesPage = () => {
                     <strong>{property.district ?? '—'}</strong>
                   </div>
 
-                  <Button variant="outline" asChild className="w-full">
-                    <Link to={`/properties/${property.id}/edit`}>{t('properties.edit')}</Link>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" asChild className="flex-1">
+                      <Link to={`/properties/${property.id}/edit`}>{t('properties.edit')}</Link>
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      className="flex-1"
+                      onClick={() => window.open(`/api/generate-presentation/${property.id}`, '_blank')}
+                    >
+                      Зробити презентацію
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

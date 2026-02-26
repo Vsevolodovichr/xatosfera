@@ -75,9 +75,11 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
       const uploadData = await uploadResponse.json();
 
       // Update user profile with new avatar URL
-      await pb.collection('users').update(user.id, {
+      const { error: updateError } = await pb.from('users').update({
         avatar_url: uploadData.key,
-      });
+      }).eq('id', user.id);
+
+      if (updateError) throw updateError;
 
       // Оновлення профілю
       await refreshProfile();
@@ -96,10 +98,12 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
     setSaving(true);
     try {
       // Оновлення профілю (без аватару, бо він окремо)
-      await pb.collection('users').update(user.id, {
+      const { error: updateError } = await pb.from('users').update({
         full_name: fullName,
         phone,
-      });
+      }).eq('id', user.id);
+
+      if (updateError) throw updateError;
 
       await refreshProfile();
       toast.success('Налаштування збережено');
