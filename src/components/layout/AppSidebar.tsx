@@ -68,7 +68,7 @@ export const AppSidebar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="fixed top-4 left-4 z-50 lg:hidden bg-card shadow-lg border border-border h-12 w-12 rounded-xl"
+            className="bg-card shadow-lg border border-border h-12 w-12 rounded-xl"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
                {mobileOpen ? <X className="h-6 w-6 text-foreground" /> : <Menu className="h-6 w-6 text-foreground" />}
