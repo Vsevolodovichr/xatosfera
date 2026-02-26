@@ -75,8 +75,8 @@ async function apiRequest<T>(
         });
         
         if (!retryResponse.ok) {
-          const errorData = await retryResponse.json().catch(() => ({}));
-          throw new Error((errorData as any).error || `HTTP ${retryResponse.status}`);
+          const errorData = await retryResponse.json().catch(() => ({} as { error?: string }));
+          throw new Error(errorData.error || `HTTP ${retryResponse.status}`);
         }
         
         return { data: await retryResponse.json() as T, error: null };
@@ -88,8 +88,8 @@ async function apiRequest<T>(
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error((errorData as any).error || `HTTP ${response.status}`);
+      const errorData = await response.json().catch(() => ({} as { error?: string }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
     const data = await response.json() as T;
@@ -236,7 +236,7 @@ type QueryOptions = {
 };
 
 function createQueryBuilder(tableName: string) {
-  let options: QueryOptions = {};
+  const options: QueryOptions = {};
   let pendingData: Record<string, unknown> | null = null;
   let pendingId: string | null = null;
   let method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET';
@@ -336,8 +336,8 @@ const storage = {
           });
 
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            return { data: null, error: new Error((errorData as any).error || 'Upload failed') };
+            const errorData = await response.json().catch(() => ({} as { error?: string }));
+            return { data: null, error: new Error(errorData.error || 'Upload failed') };
           }
 
           const data = await response.json();
@@ -369,7 +369,7 @@ const storage = {
 };
 
 // Normalize record to match expected format
-function normalizeRecord(record: Record<string, any> | null): Record<string, any> {
+function normalizeRecord(record: Record<string, unknown> | null): Record<string, unknown> {
   if (!record) return {};
   return {
     ...record,

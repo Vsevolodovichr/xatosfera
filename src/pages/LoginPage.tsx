@@ -33,7 +33,7 @@ export const LoginPage = () => {
       await signIn(email, password);
       toast.success(t('common.success'));
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(error.message || t('common.error'));
     } finally {
       setLoading(false);

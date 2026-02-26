@@ -45,7 +45,7 @@ export const RegisterPage = () => {
       await signUp(email, password, fullName);
       toast.success(t('auth.registerSuccess'));
       navigate('/login');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(error.message || t('common.error'));
     } finally {
       setLoading(false);

@@ -82,7 +82,7 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
       // Оновлення профілю
       await refreshProfile();
       toast.success('Аватар оновлено');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading avatar:', error);
       toast.error(error.message || 'Помилка завантаження аватару');
     } finally {
@@ -104,7 +104,7 @@ export const ProfileSettingsDialog = ({ open, onOpenChange }: ProfileSettingsDia
       await refreshProfile();
       toast.success('Налаштування збережено');
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving profile:', error);
       toast.error(error.message || 'Помилка збереження');
     } finally {

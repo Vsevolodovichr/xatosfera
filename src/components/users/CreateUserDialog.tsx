@@ -75,7 +75,7 @@ export const CreateUserDialog = ({
 
       onOpenChange(false);
       onUserCreated();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating user:', error);
       toast.error(error.message || t('users.error_create'));
     } finally {

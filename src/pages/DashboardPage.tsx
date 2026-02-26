@@ -26,10 +26,10 @@ export const DashboardPage = () => {
         pb.from('deals').select('id,stage'),
       ]);
       const totalProperties = properties?.length ?? 0;
-      const prices = (properties ?? []).map((p: any) => Number(p.price)).filter(Boolean);
+      const prices = (properties ?? []).map((p: PropertyRecord) => Number(p.price)).filter(Boolean);
       const avgPrice = prices.length ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : 0;
       const totalDeals = deals?.length ?? 0;
-      const closedDeals = (deals ?? []).filter((d: any) => d.stage === 'closed').length;
+      const closedDeals = (deals ?? []).filter((d: DealRecord) => d.stage === 'closed').length;
       setStats({ properties: totalProperties, closedDeals, conversion: totalDeals ? Math.round((closedDeals / totalDeals) * 100) : 0, avgPrice });
     };
     void load();

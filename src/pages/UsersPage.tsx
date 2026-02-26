@@ -83,7 +83,7 @@ export const UsersPage = () => {
 
       if (error) throw error;
       setUsers(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching users:', error);
       toast.error(t('common.error'));
     } finally {
@@ -103,7 +103,7 @@ export const UsersPage = () => {
 
       toast.success(t('users.success_approve'));
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error approving user:', error);
       toast.error(t('users.error_approve'));
     }
@@ -128,7 +128,7 @@ export const UsersPage = () => {
       setEditDialogOpen(false);
       setSelectedUser(null);
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating role:', error);
       toast.error(t('users.error_role'));
     }
@@ -143,7 +143,7 @@ export const UsersPage = () => {
 
       toast.success(t('users.success_delete'));
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting user:', error);
       toast.error(t('users.error_delete'));
     }

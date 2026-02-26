@@ -82,7 +82,7 @@ export const DocumentsPage = () => {
 
       if (error) throw error;
       setDocuments(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching documents:', error);
       toast.error('Помилка завантаження документів');
     } finally {
@@ -131,7 +131,7 @@ export const DocumentsPage = () => {
       setDialogOpen(false);
       setNewDocument({ title: '', category: 'fop', file: null });
       fetchDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading document:', error);
       toast.error('Помилка завантаження');
     } finally {
@@ -152,7 +152,7 @@ export const DocumentsPage = () => {
 
       toast.success('Документ видалено');
       fetchDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting document:', error);
       toast.error('Помилка видалення');
     }

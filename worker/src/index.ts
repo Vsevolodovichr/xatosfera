@@ -384,7 +384,7 @@ async function handleRefresh(request: Request, env: Env, jwtSecret: string): Pro
     SELECT s.*, u.* FROM sessions s
     JOIN users u ON s.user_id = u.id
     WHERE s.refresh_token = ? AND s.expires_at > datetime('now')
-  `).bind(body.refresh_token).first<any>();
+  `).bind(body.refresh_token).first<Record<string, unknown>>();
 
   if (!session) {
     return errorResponse('Invalid or expired refresh token', 401, env);
@@ -554,7 +554,7 @@ async function handleGetProperties(url: URL, env: Env, currentUser: User): Promi
   const query = parseQuery(url);
   const orderBy = buildOrderClause(query.sort);
   
-  let sql = `SELECT * FROM properties ${orderBy}`;
+  const sql = `SELECT * FROM properties ${orderBy}`;
   const results = await env.DB.prepare(sql).all();
 
   // Parse JSON fields
@@ -614,10 +614,10 @@ async function handleGetProperty(env: Env, id: string): Promise<Response> {
   // Parse JSON fields
   const parsed = {
     ...property,
-    photos: (property as any).photos ? JSON.parse((property as any).photos) : [],
-    documents: (property as any).documents ? JSON.parse((property as any).documents) : [],
-    tags: (property as any).tags ? JSON.parse((property as any).tags) : [],
-    owner_phones: (property as any).owner_phones ? JSON.parse((property as any).owner_phones) : [],
+    photos: (property as Record<string, unknown>).photos ? JSON.parse((property as Record<string, unknown>).photos) : [],
+    documents: (property as Record<string, unknown>).documents ? JSON.parse((property as Record<string, unknown>).documents) : [],
+    tags: (property as Record<string, unknown>).tags ? JSON.parse((property as Record<string, unknown>).tags) : [],
+    owner_phones: (property as Record<string, unknown>).owner_phones ? JSON.parse((property as Record<string, unknown>).owner_phones) : [],
   };
 
   return jsonResponse(parsed, 200, env);
@@ -766,7 +766,7 @@ async function handleDeleteClient(env: Env, id: string): Promise<Response> {
 
 async function handleGetInteractions(url: URL, env: Env): Promise<Response> {
   const query = parseQuery(url);
-  let sql = 'SELECT * FROM client_interactions';
+  const sql = 'SELECT * FROM client_interactions';
   const values: unknown[] = [];
 
   if (query.client_id) {
@@ -871,7 +871,7 @@ async function handleGetNotes(url: URL, env: Env, currentUser: User): Promise<Re
   const query = parseQuery(url);
   const orderBy = buildOrderClause(query.sort);
   
-  let sql = `SELECT * FROM notes WHERE created_by = ? ${orderBy}`;
+  const sql = `SELECT * FROM notes WHERE created_by = ? ${orderBy}`;
   const results = await env.DB.prepare(sql).bind(currentUser.id).all();
 
   return jsonResponse(results.results, 200, env);
@@ -932,7 +932,7 @@ async function handleGetCalendarEvents(url: URL, env: Env, currentUser: User): P
   const query = parseQuery(url);
   const orderBy = buildOrderClause(query.sort || 'starts_at');
   
-  let sql = `SELECT * FROM calendar_events WHERE user_id = ? ${orderBy}`;
+  const sql = `SELECT * FROM calendar_events WHERE user_id = ? ${orderBy}`;
   const results = await env.DB.prepare(sql).bind(currentUser.id).all();
 
   return jsonResponse(results.results, 200, env);
@@ -1041,7 +1041,7 @@ async function handleUploadDocument(request: Request, env: Env, currentUser: Use
 }
 
 async function handleDeleteDocument(env: Env, id: string, currentUser: User): Promise<Response> {
-  const doc = await env.DB.prepare('SELECT * FROM user_documents WHERE id = ?').bind(id).first<any>();
+  const doc = await env.DB.prepare('SELECT * FROM user_documents WHERE id = ?').bind(id).first<Record<string, unknown>>();
   if (!doc) {
     return errorResponse('Document not found', 404, env);
   }

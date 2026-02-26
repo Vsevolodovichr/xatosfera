@@ -19,7 +19,7 @@ export const NotesPage = () => {
   const load = async () => {
     if (!user) return;
     const { data } = await pb.from('notes').select('*').eq('created_by', user.id).order('created_at', { ascending: false });
-    const mapped = (data ?? []).map((n: any) => ({ id: n.id, title: n.title, content: n.content, priority: n.priority || 'medium', done: Boolean(n.done) }));
+    const mapped = (data ?? []).map((n: NoteRecord) => ({ id: n.id, title: n.title, content: n.content, priority: n.priority || 'medium', done: Boolean(n.done) }));
     setTasks(mapped);
   };
 
