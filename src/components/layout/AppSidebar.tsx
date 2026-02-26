@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProfileSettingsDialog } from '@/components/profile/ProfileSettingsDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   LayoutDashboard,
   Building2,
@@ -17,6 +18,7 @@ import {
   KanbanSquare,
   Contact,
   Settings,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
