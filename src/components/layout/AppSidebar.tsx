@@ -71,13 +71,19 @@ export const AppSidebar = () => {
             className="text-white hover:bg-primary h-12 w-12"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="bg-accent h-10 w-10" />}
+            {mobileOpen ? <X className="h-10 w-10" /> : <Menu className="accent h-10 w-10" />}
           </Button>
-          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
-            <Home className="h-5 w-5 text-blue-600" />
+         <div className="p-6 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center shadow-accent">
+                <Home className="h-5 w-5 text-sidebar-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg text-sidebar-foreground">Хатосфера</h1>
+                <p className="text-xs text-sidebar-foreground/60">CRM Нерухомості</p>
+              </div>
+            </div>
           </div>
-          <span className="font-bold text-white text-lg">Хатосфера</span>
-        </div>
       </div>
 
       {mobileOpen && <div className="fixed inset-0 bg-black/50 z-[55] lg:hidden" onClick={() => setMobileOpen(false)} />}
