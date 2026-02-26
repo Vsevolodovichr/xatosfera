@@ -1,11 +1,13 @@
-name = "crm-api"
-main = "src/index.ts"
+name = "xatosfera"
 compatibility_date = "2024-01-01"
+
+[site]
+bucket = "./dist"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "crm"
-database_id = "d8ee9d0c-ac4d-4f23-b1ff-8ac3d9a3d5a6"
+database_id = "d8ee9d0c-ac4d-4f23-b1ff"
 
 [[r2_buckets]]
 binding = "BUCKET"

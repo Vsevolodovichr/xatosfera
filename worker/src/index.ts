@@ -766,7 +766,7 @@ async function handleDeleteClient(env: Env, id: string): Promise<Response> {
 
 async function handleGetInteractions(url: URL, env: Env): Promise<Response> {
   const query = parseQuery(url);
-  const sql = 'SELECT * FROM client_interactions';
+  let sql = 'SELECT * FROM client_interactions';
   const values: unknown[] = [];
 
   if (query.client_id) {
