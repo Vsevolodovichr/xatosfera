@@ -25,6 +25,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 const navItems = [
   { key: 'dashboard', label: 'Головна', icon: LayoutDashboard, path: '/dashboard', permission: null },
+  { key: 'matches', label: 'Повідомлення (Метчі)', icon: MessageCircle, path: '/matches', permission: null, badge: 3 },
   { key: 'properties', label: 'Об\'єкти', icon: Building2, path: '/properties', permission: null },
   { key: 'clients', label: 'Клієнти', icon: Contact, path: '/clients', permission: null },
   { key: 'deals', label: 'Угоди', icon: KanbanSquare, path: '/deals', permission: null },
@@ -142,7 +143,12 @@ export const AppSidebar = () => {
                   )}
                 >
                   <Icon className={cn('h-5 w-5 transition-transform group-hover:scale-110', isActive && 'text-sidebar-primary-foreground')} />
-                  <span className="font-medium">{item.label}</span>
+                  <span className="font-medium flex-1">{item.label}</span>
+                  {item.badge && !isActive && (
+                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-[10px] animate-pulse">
+                      {item.badge}
+                    </Badge>
+                  )}
                 </Link>
               );
             })}

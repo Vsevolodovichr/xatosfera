@@ -18,6 +18,7 @@ import { CalendarPage } from "@/pages/CalendarPage";
 import { DocumentsPage } from "@/pages/DocumentsPage";
 import { ClientsPage } from "@/pages/ClientsPage";
 import { DealsPage } from "@/pages/DealsPage";
+import { MatchesPage } from "@/pages/MatchesPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -170,6 +171,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ClientsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/matches"
+        element={
+          <ProtectedRoute>
+            <MatchesPage />
           </ProtectedRoute>
         }
       />
