@@ -15,6 +15,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
+import { GoogleMap } from '@/components/ui/GoogleMap';
+
 export const PropertyEditPage = () => {
   const { t } = useLanguage();
   const { id } = useParams();
@@ -255,7 +257,13 @@ export const PropertyEditPage = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between"><Label>{t('property.map_title')}</Label><Button type="button" variant="outline" onClick={useMyLocation}><LocateFixed className="mr-2 h-4 w-4" />{t('property.my_location')}</Button></div>
                 <div className="grid grid-cols-2 gap-3"><Input placeholder={t('property.lat')} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /><Input placeholder={t('property.lng')} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></div>
-                <iframe title="map" className="h-72 w-full rounded-md border" src={hasPoint ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}` : 'https://www.openstreetmap.org/export/embed.html?bbox=32.18%2C48.48%2C32.32%2C48.56&layer=mapnik'} />
+                <div className="h-72 w-full">
+                  <GoogleMap 
+                    lat={Number(form.latitude)} 
+                    lng={Number(form.longitude)} 
+                    onLocationSelect={(lat, lng) => setForm(prev => ({ ...prev, latitude: String(lat), longitude: String(lng) }))} 
+                  />
+                </div>
               </div>
 
               <Button type="submit" disabled={loading}><Save className="mr-2 h-4 w-4" />{loading ? t('common.save') : t('common.save')}</Button>

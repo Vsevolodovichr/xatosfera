@@ -16,6 +16,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const API_URL = import.meta.env.VITE_API_URL || 'https://crm-api.0991597753r.workers.dev';
 const districts = ['Центр', 'Ковалівка', '101-й', 'Черьомушки', 'Велика Балка', 'Завадівка', 'Кущівка', 'Лелеківка', 'Савицького', 'Новомиколаївка'];
 
+import { GoogleMap } from '@/components/ui/GoogleMap';
+
 export const PropertyFormPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -195,6 +197,14 @@ export const PropertyFormPage = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>{t('property.coords')}</Label><div className="grid grid-cols-2 gap-2"><Input placeholder="49.839" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /><Input placeholder="24.029" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></div></div>
                 <div className="space-y-2"><Label>{t('property.tags')}</Label><Input placeholder="терміново, ексклюзив" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></div>
+              </div>
+
+              <div className="h-72 w-full mt-4">
+                <GoogleMap 
+                  lat={Number(form.latitude)} 
+                  lng={Number(form.longitude)} 
+                  onLocationSelect={(lat, lng) => setForm(prev => ({ ...prev, latitude: String(lat), longitude: String(lng) }))} 
+                />
               </div>
 
               <div className="space-y-2"><Label>{t('property.owner_notes')}</Label><Textarea value={form.owner_notes} onChange={(e) => setForm({ ...form, owner_notes: e.target.value })} /></div>
