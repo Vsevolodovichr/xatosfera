@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, CheckCircle2, Target, Wallet, Mail, Send, MessageCircle, Clock, Zap, Activity, Trophy, AlertTriangle, DollarSign } from 'lucide-react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi as pb } from '@/integrations/cloudflare/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

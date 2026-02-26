@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi as pb } from '@/integrations/cloudflare/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

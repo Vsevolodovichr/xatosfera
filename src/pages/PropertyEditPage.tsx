@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, LocateFixed, ImagePlus, X, Loader2 } from 'lucide-react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi as pb } from '@/integrations/cloudflare/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';

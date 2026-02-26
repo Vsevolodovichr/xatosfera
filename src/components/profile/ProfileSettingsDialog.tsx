@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi as pb } from '@/integrations/cloudflare/client';
 import { toast } from 'sonner';
 import {
   Dialog,

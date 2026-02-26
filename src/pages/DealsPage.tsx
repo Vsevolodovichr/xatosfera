@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi as pb } from '@/integrations/cloudflare/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

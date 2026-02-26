@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Plus, MapPin, Image as ImageIcon } from 'lucide-react';
-import pb from '@/integrations/pocketbase/client';
+import { cloudflareApi as pb } from '@/integrations/cloudflare/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type Property = {
   id: string;
@@ -98,20 +99,14 @@ export const PropertiesPage = () => {
         </div>
 
         <Card>
-          <CardHeader><CardTitle>{t('properties.quickSearch')}</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t('properties.quickSearch')}</CardTitle></CardHeader>
           <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('properties.searchPlaceholder')} />
             </div>
-            <Input type="number" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} placeholder={t('properties.priceFrom')} />
-            <Input type="number" value={priceTo} onChange={(e) => setPriceTo(e.target.value)} placeholder={t('properties.priceTo')} />
           </CardContent>
         </Card>
-
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
-// ... existing code ...
 
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="filters" className="border-none">
@@ -162,8 +157,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-end">
-                    <Button variant="outline" className="w-full" onClick={() => { setStatus('all'); setOperationType('all'); setCategory('all'); setPriceFrom(''); setPriceTo(''); }}>{t('properties.resetFilters')}</Button>
+                  <div className="flex items-end gap-2">
+                    <Input type="number" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} placeholder={t('properties.priceFrom')} className="flex-1" />
+                    <Input type="number" value={priceTo} onChange={(e) => setPriceTo(e.target.value)} placeholder={t('properties.priceTo')} className="flex-1" />
+                    <Button variant="outline" onClick={() => { setStatus('all'); setOperationType('all'); setCategory('all'); setPriceFrom(''); setPriceTo(''); }}>{t('properties.resetFilters')}</Button>
                   </div>
                 </div>
               </AccordionContent>
