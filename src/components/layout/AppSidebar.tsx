@@ -113,7 +113,9 @@ export const AppSidebar = () => {
           {profile && (
             <div className="p-4 border-b border-sidebar-border">
               <button
-                onClick={() => setProfileOpen(true)}
+                onClick={() => setProfileOpen(true) 
+                  if (window.innerWidth < 1024) {          
+                  setMobileOpen(false);}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-left"
               >
                 <Avatar className="w-10 h-10">
