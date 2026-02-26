@@ -170,7 +170,7 @@ export const AppSidebar = () => {
           <div className="p-4 border-t border-sidebar-border">
             <Button 
               variant="ghost" 
-              className="fixed w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent" 
+              className=" w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent" 
               onClick={signOut}
             >
               <LogOut className="h-5 w-5" />
