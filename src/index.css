@@ -7,119 +7,78 @@
 @layer base {
   :root {
     /* CRM Professional Theme - Navy & Gold */
-    --background: 210 20% 98%;
-    --foreground: 220 30% 15%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 15%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 15%;
-
-    /* Primary - Deep Navy */
-    --primary: 220 60% 25%;
-    --primary-foreground: 210 40% 98%;
-
-    /* Secondary - Soft Blue-Gray */
-    --secondary: 215 25% 94%;
-    --secondary-foreground: 220 30% 25%;
-
-    /* Muted */
-    --muted: 215 25% 94%;
-    --muted-foreground: 215 16% 47%;
-
-    /* Accent - Warm Amber/Gold */
-    --accent: 38 92% 50%;
-    --accent-foreground: 220 30% 15%;
-
-    /* Destructive */
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-
-    /* Success */
-    --success: 142 71% 45%;
-    --success-foreground: 210 40% 98%;
-
-    /* Warning */
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 30% 15%;
-
-    /* Info */
-    --info: 199 89% 48%;
-    --info-foreground: 210 40% 98%;
-
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 220 60% 25%;
-
-    --radius: 0.625rem;
-
-    /* Sidebar */
-    --sidebar-background: 220 55% 18%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 220 30% 15%;
-    --sidebar-accent: 220 50% 25%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 220 45% 25%;
-    --sidebar-ring: 38 92% 50%;
-
-    /* Custom Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(220 60% 25%) 0%, hsl(220 50% 35%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(30 90% 55%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(220 55% 18%) 0%, hsl(220 50% 30%) 50%, hsl(220 45% 35%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    --shadow-accent: 0 4px 14px 0 hsl(38 92% 50% / 0.25);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-  }
-
-  .dark {
-    --background: 220 30% 10%;
-    --foreground: 210 40% 96%;
-
-    --card: 220 30% 13%;
-    --card-foreground: 210 40% 96%;
-
-    --popover: 220 30% 13%;
-    --popover-foreground: 210 40% 96%;
-
-    --primary: 38 92% 50%;
-    --primary-foreground: 220 30% 10%;
-
-    --secondary: 220 30% 18%;
-    --secondary-foreground: 210 40% 96%;
-
-    --muted: 220 30% 18%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 38 92% 50%;
-    --accent-foreground: 220 30% 10%;
-
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 98%;
-
-    --success: 142 71% 45%;
-    --success-foreground: 210 40% 98%;
-
-    --border: 220 25% 20%;
-    --input: 220 25% 20%;
-    --ring: 38 92% 50%;
-
-    --sidebar-background: 220 35% 8%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 220 30% 10%;
-    --sidebar-accent: 220 30% 15%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 220 25% 15%;
-    --sidebar-ring: 38 92% 50%;
-  }
+   --background: 180 10% 98%;             /* теплий сіро-бежевий */
+  --foreground: 180 10% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 180 10% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 180 10% 15%;
+  /* Primary — Deep Emerald */
+  --primary: 160 70% 18%;                /* #0A3D2E ≈ */
+  --primary-foreground: 180 20% 98%;
+  /* Secondary */
+  --secondary: 180 8% 92%;
+  --secondary-foreground: 180 15% 25%;
+  /* Muted */
+  --muted: 180 8% 92%;
+  --muted-foreground: 180 10% 50%;
+  /* Accent — Copper */
+  --accent: 25 60% 55%;                  /* #B87333 ≈ */
+  --accent-foreground: 180 10% 15%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 180 20% 98%;
+  --success: 142 71% 45%;
+  --success-foreground: 180 20% 98%;
+  --warning: 25 60% 55%;
+  --warning-foreground: 180 10% 15%;
+  --info: 199 89% 48%;
+  --info-foreground: 180 20% 98%;
+  --border: 180 8% 88%;
+  --input: 180 8% 88%;
+  --ring: 160 70% 18%;
+  --radius: 0.625rem;
+  /* Sidebar */
+  --sidebar-background: 160 60% 15%;     /* темний emerald */
+  --sidebar-foreground: 180 20% 96%;
+  --sidebar-primary: 25 60% 55%;         /* copper */
+  --sidebar-primary-foreground: 180 10% 15%;
+  --sidebar-accent: 160 50% 22%;
+  --sidebar-accent-foreground: 180 20% 96%;
+  --sidebar-border: 160 50% 20%;
+  --sidebar-ring: 25 60% 55%;
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, hsl(160 70% 18%) 0%, hsl(160 60% 25%) 100%);
+  --gradient-accent: linear-gradient(135deg, hsl(25 60% 55%) 0%, hsl(20 65% 60%) 100%);
+  --gradient-hero: linear-gradient(135deg, hsl(160 60% 15%) 0%, hsl(160 50% 22%) 50%, hsl(160 45% 28%) 100%);
+  --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(180 10% 98%) 100%);
+}
+.dark {
+  --background: 180 15% 10%;
+  --foreground: 180 15% 96%;
+  --card: 180 15% 13%;
+  --card-foreground: 180 15% 96%;
+  --popover: 180 15% 13%;
+  --popover-foreground: 180 15% 96%;
+  --primary: 25 60% 55%;                 /* copper на темному */
+  --primary-foreground: 180 15% 10%;
+  --secondary: 180 12% 18%;
+  --secondary-foreground: 180 15% 96%;
+  --muted: 180 12% 18%;
+  --muted-foreground: 180 10% 70%;
+  --accent: 25 60% 55%;
+  --accent-foreground: 180 15% 10%;
+  --border: 180 12% 20%;
+  --input: 180 12% 20%;
+  --ring: 25 60% 55%;
+  --sidebar-background: 160 50% 8%;
+  --sidebar-foreground: 180 15% 96%;
+  --sidebar-primary: 25 60% 55%;
+  --sidebar-primary-foreground: 180 15% 10%;
+  --sidebar-accent: 160 40% 15%;
+  --sidebar-accent-foreground: 180 15% 96%;
+  --sidebar-border: 160 30% 18%;
+  --sidebar-ring: 25 60% 55%;
+}
 }
 
 @layer base {
