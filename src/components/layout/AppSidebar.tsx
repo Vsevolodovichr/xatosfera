@@ -78,7 +78,7 @@ export const AppSidebar = () => {
               <div className="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center shadow-accent">
                 <Home className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
-              <div className="flex items-center">
+              <div className="justify-center">
                 <h1 className="font-bold text-lg text-sidebar-primary">ANGELS</h1>
                 <p className="text-xs text-sidebar-primary/60">Агенція Нерухомості</p>
               </div>
@@ -102,7 +102,7 @@ export const AppSidebar = () => {
               <div className="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center shadow-accent">
                 <Home className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
-              <div className="flex items-center">
+              <div className="justify-center">
                 <h1 className="font-bold text-lg text-sidebar-primary">ANGELS</h1>
                 <p className="text-xs text-sidebar-primary/60">Агенція Нерухомості</p>
               </div>
