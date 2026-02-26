@@ -63,10 +63,10 @@ export const AppSidebar = () => {
       <Button
         variant="outline"
         size="icon"
-        className="fixed bottom-4 left-4 z-50 lg:hidden bg-card shadow-lg border border-border"
+        className="fixed top-4 left-4 z-50 lg:hidden bg-card shadow-lg border border-border h-12 w-12 rounded-xl"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
-        {mobileOpen ? <X className="h-5 w-5 text-foreground" /> : <Menu className="h-5 w-5 text-foreground" />}
+        {mobileOpen ? <X className="h-6 w-6 text-foreground" /> : <Menu className="h-6 w-6 text-foreground" />}
       </Button>
 
       {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />}
