@@ -174,9 +174,9 @@ export const DealsPage = () => {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
+                    <input 
                       placeholder={language === 'uk' ? 'Назва або ID...' : 'Name or ID...'} 
-                      className="pl-8"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-8"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -193,38 +193,6 @@ export const DealsPage = () => {
             </div>
           </DialogContent>
         </Dialog>
-
-        <div className="grid xl:grid-cols-5 md:grid-cols-2 gap-3">
-          {stages.map((stage) => (
-            <Card key={stage}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{stageLabel[stage]}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {deals.filter((d) => d.stage === stage).map((deal) => (
-                  <div key={deal.id} className="rounded-md border p-3 space-y-2 bg-card">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-sm">{deal.title}</p>
-                      <Badge className={stageColor[deal.stage]}>{stageLabel[deal.stage]}</Badge>
-                    </div>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => moveDeal(deal)}>
-                      {t('deals.moveNext')}
-                    </Button>
-                    {role === 'top_manager' && (
-                      <p className="text-xs text-muted-foreground">
-                        {t('deals.topManagerNote')}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </AppLayout>
-  );
-};
 
         <div className="grid xl:grid-cols-5 md:grid-cols-2 gap-3">
           {stages.map((stage) => (
