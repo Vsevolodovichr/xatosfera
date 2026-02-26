@@ -68,10 +68,10 @@ export const AppSidebar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-blue-700 h-10 w-10"
+            className="text-white hover:bg-primary h-12 w-12"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="bg-accent h-10 w-10" />}
           </Button>
           <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
             <Home className="h-5 w-5 text-blue-600" />
